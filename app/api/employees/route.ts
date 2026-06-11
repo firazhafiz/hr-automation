@@ -113,6 +113,8 @@ export async function POST(request: Request) {
     let hashedPassword = null;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
+    } else if (email) {
+      hashedPassword = await bcrypt.hash("toshin123", 10);
     }
 
     const employee = await prisma.employee.create({

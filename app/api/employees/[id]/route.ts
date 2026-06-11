@@ -88,6 +88,11 @@ export async function PUT(
     const body = await request.json();
     const { nik, nama, email, password, bagian, departemen, is_active } = body;
 
+    const currentEmployee = await prisma.employee.findUnique({ where: { id } });
+    if (!currentEmployee) {
+      return NextResponse.json({ error: "Karyawan tidak ditemukan" }, { status: 404 });
+    }
+
     // Check if NIK conflicts with another employee
     if (nik) {
       const existing = await prisma.employee.findFirst({
@@ -111,6 +116,9 @@ export async function PUT(
 
     if (password) {
       dataToUpdate.password = await bcrypt.hash(password, 10);
+    } else if (email && !currentEmployee.password) {
+      // Auto-generate default password if adding email for the first time
+      dataToUpdate.password = await bcrypt.hash("toshin123", 10);
     }
 
     const employee = await prisma.employee.update({

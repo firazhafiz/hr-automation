@@ -50,20 +50,44 @@ const getBadge = (jenis: string) => {
 };
 
 const MONTHS = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
 ];
 
 // ── CSV Export helper ──────────────────────────────────────────────────────────
-function exportToCSV(data: FormSubmission[], employee: Employee, bulanLabel: string) {
+function exportToCSV(
+  data: FormSubmission[],
+  employee: Employee,
+  bulanLabel: string,
+) {
   const formatDateCSV = (d: Date | string | null) => {
     if (!d) return "";
-    return new Date(d).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return new Date(d).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   const headers = [
-    "No", "Jenis Form", "Tanggal Mulai", "Tanggal Selesai",
-    "Tanggal Surat", "Status TTD", "Keterangan/Alasan", "Tgl Input",
+    "No",
+    "Jenis Form",
+    "Tanggal Mulai",
+    "Tanggal Selesai",
+    "Tanggal Surat",
+    "Status TTD",
+    "Keterangan/Alasan",
+    "Tgl Input",
   ];
 
   const rows = data.map((row, i) => [
@@ -73,15 +97,19 @@ function exportToCSV(data: FormSubmission[], employee: Employee, bulanLabel: str
     formatDateCSV(row.tanggal_selesai),
     formatDateCSV(row.tanggal_surat),
     row.ttd_lengkap ? "Lengkap" : "Tidak Lengkap",
-    row.jenis_form === "SP" ? (row.alasan || "") : (row.keterangan || ""),
+    row.jenis_form === "SP" ? row.alasan || "" : row.keterangan || "",
     formatDateCSV(row.created_at),
   ]);
 
   const escape = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`;
-  const csvContent = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
+  const csvContent = [headers, ...rows]
+    .map((r) => r.map(escape).join(","))
+    .join("\n");
 
   const BOM = "\uFEFF"; // UTF-8 BOM so Excel opens correctly
-  const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([BOM + csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -99,7 +127,10 @@ export default function PortalPage() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [summary, setSummary] = useState<Summary>({
-    sp: 0, cuti: 0, ijin: 0, total: 0,
+    sp: 0,
+    cuti: 0,
+    ijin: 0,
+    total: 0,
   });
   const [loading, setLoading] = useState(true);
   const [bulan, setBulan] = useState<string>("");
@@ -134,23 +165,27 @@ export default function PortalPage() {
       return;
     }
     const year = new Date().getFullYear();
-    const bulanLabel = bulan ? `${MONTHS[Number(bulan.split("-")[1]) - 1]}_${year}` : `Semua_Bulan_${year}`;
+    const bulanLabel = bulan
+      ? `${MONTHS[Number(bulan.split("-")[1]) - 1]}_${year}`
+      : `Semua_Bulan_${year}`;
     exportToCSV(submissions, employee, bulanLabel);
     toast.success(`Berhasil mengekspor riwayat`);
   };
 
-  const initials = employee?.nama
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase() || "?";
+  const initials =
+    employee?.nama
+      .split(" ")
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase() || "?";
 
-  const avatarBg = summary.sp >= 3
-    ? "bg-red-100 text-red-700"
-    : summary.sp >= 1
-      ? "bg-amber-100 text-amber-700"
-      : "bg-[#1767AF]/10 text-[#1767AF]";
+  const avatarBg =
+    summary.sp >= 3
+      ? "bg-red-100 text-red-700"
+      : summary.sp >= 1
+        ? "bg-amber-100 text-amber-700"
+        : "bg-[#1767AF]/10 text-[#1767AF]";
 
   const currentYear = new Date().getFullYear();
 
@@ -169,18 +204,20 @@ export default function PortalPage() {
       {/* Profile Header Card */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-          {/* Avatar */}
-          <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl font-bold shrink-0 ${avatarBg}`}>
+          {/* Avatar
+          <div
+            className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl font-bold shrink-0 ${avatarBg}`}
+          >
             {initials}
-          </div>
+          </div> */}
 
           {/* Info */}
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
               {employee.nama}
             </h1>
-            <p className="font-mono text-sm text-slate-400 mt-0.5">
-              NIK: {employee.nik}
+            <p className="font-mono text-md text-slate-400 mt-0.5">
+              {employee.nik}
             </p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
               {employee.departemen && (
@@ -213,30 +250,25 @@ export default function PortalPage() {
         {/* Summary Stats */}
         <div className="grid grid-cols-3 border-t border-slate-100 divide-x divide-slate-100">
           <div className="py-4 px-6 text-center bg-slate-50">
-            <p className="text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">
-              Tahun {currentYear}
-            </p>
-            <div className="flex justify-center items-baseline gap-1">
-              <p className="text-2xl font-bold text-red-600">{summary.sp}</p>
+            <div className="flex flex-col justify-center items-center">
               <p className="text-xs font-medium text-slate-500">SP</p>
+              <p className="text-2xl font-bold text-red-600">{summary.sp}</p>
             </div>
           </div>
           <div className="py-4 px-6 text-center bg-slate-50">
-            <p className="text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">
-              Tahun {currentYear}
-            </p>
-            <div className="flex justify-center items-baseline gap-1">
-              <p className="text-2xl font-bold text-emerald-600">{summary.cuti}</p>
+            <div className="flex flex-col justify-center items-center">
               <p className="text-xs font-medium text-slate-500">Cuti</p>
+              <p className="text-2xl font-bold text-emerald-600">
+                {summary.cuti}
+              </p>
             </div>
           </div>
           <div className="py-4 px-6 text-center bg-slate-50">
-            <p className="text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">
-              Tahun {currentYear}
-            </p>
-            <div className="flex justify-center items-baseline gap-1">
-              <p className="text-2xl font-bold text-amber-600">{summary.ijin}</p>
+            <div className="flex flex-col justify-center items-center">
               <p className="text-xs font-medium text-slate-500">Izin</p>
+              <p className="text-2xl font-bold text-amber-600">
+                {summary.ijin}
+              </p>
             </div>
           </div>
         </div>
@@ -335,7 +367,9 @@ export default function PortalPage() {
                   <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center gap-1">
                       <FileText className="w-3 h-3" />
-                      {sub.jenis_form === "SP" ? "Tgl Surat:" : "Tgl Pelaksanaan:"}
+                      {sub.jenis_form === "SP"
+                        ? "Tgl Surat:"
+                        : "Tgl Pelaksanaan:"}
                     </span>
                     <span className="font-medium text-slate-500">
                       {sub.jenis_form === "SP"
@@ -353,7 +387,7 @@ export default function PortalPage() {
         )}
       </div>
 
-      <ChangePasswordModal 
+      <ChangePasswordModal
         isOpen={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
       />

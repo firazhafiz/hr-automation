@@ -4,7 +4,11 @@ import Image from "next/image";
 import { signOut, useSession } from "next-auth/react";
 import { LogOut } from "lucide-react";
 
-export default function PortalLayout({ children }: { children: React.ReactNode }) {
+export default function PortalLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { data: session } = useSession();
 
   return (
@@ -14,8 +18,13 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="relative w-8 h-8 rounded-md overflow-hidden bg-white border border-slate-100 p-0.5">
-              <Image src="/logo/logo.png" alt="Logo" fill className="object-contain" />
+            <div className="relative w-10 h-10 rounded-md overflow-hidden bg-white border border-slate-100 p-0.5">
+              <Image
+                src="/logo/logo.png"
+                alt="Logo"
+                fill
+                className="object-contain"
+              />
             </div>
             <div className="hidden sm:block">
               <h1 className="text-sm font-bold text-slate-800 tracking-wide leading-tight">
@@ -46,7 +55,9 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors group flex items-center gap-2"
               title="Keluar"
             >
-              <span className="text-xs font-medium hidden sm:inline group-hover:text-red-500 transition-colors">Keluar</span>
+              <span className="text-xs font-medium hidden sm:inline group-hover:text-red-500 transition-colors">
+                Keluar
+              </span>
               <LogOut className="w-4 h-4" />
             </button>
           </div>
