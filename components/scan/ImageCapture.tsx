@@ -78,16 +78,16 @@ export function ImageCapture({ onCapture }: ImageCaptureProps) {
         <div className="flex gap-3">
           <Button
             variant="outline"
-            className="flex-1 h-12 rounded-xl"
+            className="flex-1 h-12 rounded-full"
             onClick={reset}
           >
-            <RefreshCcw className="mr-2 h-4 w-4" /> Foto Ulang
+            Foto Ulang
           </Button>
           <Button
-            className="flex-1 h-12 rounded-xl bg-[#1767AF] hover:bg-[#1356A0] text-white"
+            className="flex-1 h-12 rounded-full bg-[#1767AF] hover:bg-[#1356A0] text-white"
             onClick={() => imageSrc && onCapture(imageSrc)}
           >
-            <Check className="mr-2 h-4 w-4" /> Gunakan Foto
+            Gunakan Foto
           </Button>
         </div>
       </div>

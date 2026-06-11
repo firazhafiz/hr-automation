@@ -18,6 +18,7 @@ interface Employee {
   id?: string;
   nik: string;
   nama: string;
+  email?: string | null;
   bagian: string | null;
   departemen: string | null;
 }
@@ -50,6 +51,8 @@ export function EmployeeModal({
   const [form, setForm] = useState({
     nik: "",
     nama: "",
+    email: "",
+    password: "",
     bagian: "",
     departemen: "",
   });
@@ -60,11 +63,13 @@ export function EmployeeModal({
       setForm({
         nik: employee.nik || "",
         nama: employee.nama || "",
+        email: employee.email || "",
+        password: "", // Kosong berarti tidak diubah
         bagian: employee.bagian || "",
         departemen: employee.departemen || "",
       });
     } else {
-      setForm({ nik: "", nama: "", bagian: "", departemen: "" });
+      setForm({ nik: "", nama: "", email: "", password: "toshin123", bagian: "", departemen: "" });
     }
   }, [employee, isOpen]);
 
@@ -117,9 +122,9 @@ export function EmployeeModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl z-10 overflow-hidden">
+      <div className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl z-10 overflow-y-auto max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 py-5 border-b border-slate-100">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
               {isEdit ? "Edit Karyawan" : "Tambah Karyawan Baru"}
@@ -176,6 +181,41 @@ export function EmployeeModal({
               onChange={(e) => handleChange("nama", e.target.value)}
               className="h-10"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="email"
+                className="text-sm font-medium text-slate-700 flex items-center gap-1.5"
+              >
+                Email Portal
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="cth. budi@toshin.co.id"
+                value={form.email}
+                onChange={(e) => handleChange("email", e.target.value)}
+                className="h-10"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="password"
+                className="text-sm font-medium text-slate-700 flex items-center gap-1.5"
+              >
+                Password
+              </Label>
+              <Input
+                id="password"
+                type="text"
+                disabled
+                value="toshin123"
+                className="h-10 bg-slate-50 text-slate-500 cursor-not-allowed"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

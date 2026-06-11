@@ -12,5 +12,6 @@ export const config = {
     "/scan/:path*",
     "/submissions/:path*",
     "/employees/:path*",
+    "/portal/:path*",
   ],
 };

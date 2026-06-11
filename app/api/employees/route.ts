@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
@@ -14,7 +16,7 @@ export async function GET(request: Request) {
     const limit = Math.max(1, Math.min(50, parseInt(searchParams.get("limit") || "12")));
     const skip = (page - 1) * limit;
 
-    const where: any = { is_active: true };
+    const where: Prisma.EmployeeWhereInput = { is_active: true };
     if (search) {
       where.OR = [
         { nama: { contains: search, mode: "insensitive" } },
@@ -62,10 +64,13 @@ export async function GET(request: Request) {
       if (row.jenis_form === "IJIN") summaryMap[row.employee_id].ijin = row._count.id;
     }
 
-    const enrichedEmployees = employees.map(emp => ({
-      ...emp,
-      summary: summaryMap[emp.id] || { sp: 0, cuti: 0, ijin: 0 },
-    }));
+    const enrichedEmployees = employees.map(emp => {
+      const { password, ...safeEmp } = emp;
+      return {
+        ...safeEmp,
+        summary: summaryMap[emp.id] || { sp: 0, cuti: 0, ijin: 0 },
+      };
+    });
 
     return NextResponse.json({
       data: enrichedEmployees,
@@ -86,7 +91,7 @@ export async function POST(request: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await request.json();
-    const { nik, nama, bagian, departemen } = body;
+    const { nik, nama, email, password, bagian, departemen } = body;
 
     if (!nik || !nama) {
       return NextResponse.json({ error: "NIK dan Nama wajib diisi" }, { status: 400 });
@@ -98,11 +103,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "NIK sudah terdaftar" }, { status: 409 });
     }
 
+    if (email) {
+      const existingEmail = await prisma.employee.findUnique({ where: { email } });
+      if (existingEmail) {
+        return NextResponse.json({ error: "Email sudah digunakan" }, { status: 409 });
+      }
+    }
+
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
     const employee = await prisma.employee.create({
-      data: { nik, nama, bagian, departemen, is_active: true },
+      data: { 
+        nik, 
+        nama, 
+        email: email || null,
+        password: hashedPassword,
+        bagian, 
+        departemen, 
+        is_active: true 
+      },
     });
 
-    return NextResponse.json(employee, { status: 201 });
+    const { password: _, ...safeEmployee } = employee;
+    return NextResponse.json(safeEmployee, { status: 201 });
   } catch (error) {
     console.error("POST /api/employees error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

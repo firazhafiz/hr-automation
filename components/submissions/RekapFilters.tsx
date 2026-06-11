@@ -43,10 +43,7 @@ export function RekapFilters({
   onExport,
 }: RekapFiltersProps) {
   const now = new Date();
-  const yearOptions = Array.from(
-    { length: 4 },
-    (_, i) => now.getFullYear() - i,
-  );
+  const currentYear = now.getFullYear();
 
   return (
     <div className="p-4 sm:p-5 border-b border-slate-100 space-y-3">
@@ -81,17 +78,15 @@ export function RekapFilters({
             value={bulan}
             onChange={(e) => onBulanChange(e.target.value)}
           >
-            <option value="">Semua Bulan</option>
-            {yearOptions.map((year) =>
-              MONTHS.map((m, mi) => {
-                const val = `${year}-${String(mi + 1).padStart(2, "0")}`;
-                return (
-                  <option key={val} value={val}>
-                    {m} {year}
-                  </option>
-                );
-              }),
-            )}
+            <option value="">Semua ({currentYear})</option>
+            {MONTHS.map((m, mi) => {
+              const val = `${currentYear}-${String(mi + 1).padStart(2, "0")}`;
+              return (
+                <option key={val} value={val}>
+                  {m} {currentYear}
+                </option>
+              );
+            })}
           </select>
         </div>
 

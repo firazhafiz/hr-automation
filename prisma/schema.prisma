@@ -21,6 +21,8 @@ model Employee {
   id         String           @id @default(uuid())
   nik        String           @unique @db.VarChar(20)
   nama       String           @db.VarChar(100)
+  email      String?          @unique
+  password   String?
   bagian     String?          @db.VarChar(100)
   departemen String?          @db.VarChar(50)
   is_active  Boolean          @default(true)

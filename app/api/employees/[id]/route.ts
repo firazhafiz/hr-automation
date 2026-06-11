@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,7 @@ export async function GET(
     }
 
     // Build date filter — SP forms may have null tanggal_mulai, fall back to created_at
-    let submissionWhere: any = { employee_id: id, is_deleted: false };
+    let submissionWhere: Prisma.FormSubmissionWhereInput = { employee_id: id, is_deleted: false };
     if (bulan) {
       const [year, month] = bulan.split("-").map(Number);
       const startDate = new Date(year, month - 1, 1);
@@ -84,7 +86,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { nik, nama, bagian, departemen, is_active } = body;
+    const { nik, nama, email, password, bagian, departemen, is_active } = body;
 
     // Check if NIK conflicts with another employee
     if (nik) {
@@ -96,12 +98,28 @@ export async function PUT(
       }
     }
 
+    if (email) {
+      const existingEmail = await prisma.employee.findFirst({
+        where: { email, NOT: { id } },
+      });
+      if (existingEmail) {
+        return NextResponse.json({ error: "Email sudah digunakan" }, { status: 409 });
+      }
+    }
+
+    const dataToUpdate: Prisma.EmployeeUpdateInput = { nik, nama, email: email || null, bagian, departemen, is_active };
+
+    if (password) {
+      dataToUpdate.password = await bcrypt.hash(password, 10);
+    }
+
     const employee = await prisma.employee.update({
       where: { id },
-      data: { nik, nama, bagian, departemen, is_active },
+      data: dataToUpdate,
     });
 
-    return NextResponse.json(employee);
+    const { password: _, ...safeEmployee } = employee;
+    return NextResponse.json(safeEmployee);
   } catch (error) {
     console.error("PUT /api/employees/[id] error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

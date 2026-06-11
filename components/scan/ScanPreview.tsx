@@ -70,7 +70,7 @@ export function ScanPreview({
   return (
     <div className="flex flex-col gap-4 w-full animate-fade-up">
       {/* ── Image (collapsible on mobile) ────────────── */}
-      <div className="rounded-2xl border border-slate-200 overflow-hidden bg-slate-100 shadow-sm">
+      <div className="rounded-md border border-slate-400 overflow-hidden bg-slate-100">
         <button
           onClick={() => setImgExpanded(!imgExpanded)}
           className="w-full flex items-center justify-between px-4 py-3 bg-white border-b border-slate-100 text-sm font-medium text-slate-700 md:hidden"
@@ -113,7 +113,7 @@ export function ScanPreview({
         </div>
       )}
       {hasLowConfidence && (
-        <div className="flex gap-3 items-start p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+        <div className="flex gap-3 items-start p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <p>
             Beberapa field ditandai kuning/merah — AI kurang yakin. Periksa
@@ -123,7 +123,7 @@ export function ScanPreview({
       )}
 
       {/* ── TTD Status ──────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+      <div className="bg-white rounded-md border border-slate-100 shadow-sm p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-slate-500" /> Tanda Tangan
@@ -138,7 +138,7 @@ export function ScanPreview({
           {[ttd.slot_1, ttd.slot_2, ttd.slot_3].map((slot, i) => (
             <div
               key={i}
-              className={`rounded-xl border p-2.5 text-center text-xs ${
+              className={`rounded-md border p-2.5 text-center text-xs ${
                 slot?.signed
                   ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                   : "bg-slate-50 border-slate-200 text-slate-500"
@@ -338,16 +338,16 @@ export function ScanPreview({
           <Button
             type="button"
             variant="outline"
-            className="flex-1 h-12 rounded-xl"
+            className="flex-1 h-12 rounded-full"
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            <X className="w-4 h-4 mr-2" /> Batal
+            Batal
           </Button>
           <Button
             type="submit"
             disabled={isSubmitting || !isTtdComplete}
-            className="flex-1 h-12 rounded-xl bg-[#1767AF] hover:bg-[#1356A0] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 h-12 rounded-full bg-[#1767AF] hover:bg-[#1356A0] text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
@@ -355,9 +355,7 @@ export function ScanPreview({
                 Menyimpan...
               </>
             ) : (
-              <>
-                <Check className="w-4 h-4 mr-2" /> Simpan Data
-              </>
+              <>Simpan Data</>
             )}
           </Button>
         </div>

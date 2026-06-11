@@ -10,6 +10,8 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      role?: string;
+      employeeId?: string;
     };
   }
 }
@@ -33,27 +35,48 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email dan password harus diisi.");
         }
 
+        // Check Admin
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email,
           },
         });
 
-        if (!user || !user.password) {
-          throw new Error("Email atau password tidak sesuai.");
+        if (user) {
+          if (!user.password) throw new Error("Email atau password tidak sesuai.");
+          const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+          if (!isPasswordValid) throw new Error("Email atau password tidak sesuai.");
+          
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: "admin",
+          };
         }
 
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
+        // Check Employee
+        const employee = await prisma.employee.findUnique({
+          where: {
+            email: credentials.email,
+          },
+        });
 
-        if (!isPasswordValid) {
-          throw new Error("Email atau password tidak sesuai.");
+        if (employee) {
+          if (!employee.password) throw new Error("Akun Anda belum memiliki password. Silakan hubungi Admin.");
+          const isPasswordValid = await bcrypt.compare(credentials.password, employee.password);
+          if (!isPasswordValid) throw new Error("Email atau password tidak sesuai.");
+
+          return {
+            id: employee.id,
+            email: employee.email,
+            name: employee.nama,
+            role: "employee",
+            employeeId: employee.id,
+          };
         }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        };
+        throw new Error("Email atau password tidak sesuai.");
       },
     }),
   ],
@@ -61,12 +84,16 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
+        session.user.role = token.role as string | undefined;
+        session.user.employeeId = token.employeeId as string | undefined;
       }
       return session;
     },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = (user as any).role;
+        token.employeeId = (user as any).employeeId;
       }
       return token;
     },

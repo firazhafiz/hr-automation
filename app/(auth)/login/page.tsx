@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -95,7 +95,7 @@ function TickerLine() {
     "SISTEM AKTIF",
     "PEMANTAUAN REAL-TIME",
     "AKURASI DATA 99.9%",
-    "KEHADIRAN TERINTEGRASI",
+    "PORTAL HR",
     "PT TOSHIN PRIMA FINE BLANKING",
   ];
   const repeated = [...items, ...items];
@@ -158,9 +158,14 @@ export default function LoginPage() {
         redirect: false,
       });
       if (result?.error) {
-        setError("Email atau password tidak sesuai.");
+        setError(result.error || "Email atau password tidak sesuai.");
       } else {
-        router.push("/dashboard");
+        const session = await getSession();
+        if ((session?.user as any)?.role === "employee") {
+          router.push("/portal");
+        } else {
+          router.push("/dashboard");
+        }
       }
     } catch {
       setError("Sistem sedang sibuk. Silakan coba lagi.");
@@ -327,7 +332,8 @@ export default function LoginPage() {
             <div className="divider-line mb-6 w-24" />
 
             <p className="text-sm text-slate-600 leading-relaxed max-w-[340px]">
-              Otomatisasi ekstraksi form rekap HR. Cepat, akurat, dan mengurangi proses entri manual harian.
+              Otomatisasi ekstraksi form rekap HR. Cepat, akurat, dan mengurangi
+              proses entri manual harian.
             </p>
 
             {/* Stats row */}
@@ -447,7 +453,7 @@ export default function LoginPage() {
                 Selamat Datang
               </h2>
               <p className="mt-1.5 text-sm text-slate-500">
-                Masuk ke portal absensi internal.
+                Masuk ke portal hr internal.
               </p>
             </div>
 
@@ -459,7 +465,7 @@ export default function LoginPage() {
                   htmlFor="email"
                   className="block text-[11px] font-mono-dm font-medium uppercase tracking-[0.12em] text-slate-600 mb-2"
                 >
-                  Email Admin
+                  Email
                 </label>
                 <div className="relative">
                   <div
@@ -578,11 +584,10 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Compliance note */}
             <div className="animate-fade-up delay-600 mt-10 glass-panel rounded-lg p-3 flex items-center gap-2.5 bg-slate-50">
               <div className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
               <p className="font-mono-dm text-[9px] text-slate-500 leading-relaxed uppercase tracking-[0.1em]">
-                Akses terbatas untuk admin terdaftar.
+                Untuk admin dan karyawan terdaftar.
               </p>
             </div>
           </div>
