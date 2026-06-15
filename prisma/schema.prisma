@@ -77,3 +77,12 @@ model AuditLog {
   new_data   Json?
   created_at DateTime @default(now())
 }
+
+// Tracks each scan API call for daily rate limiting
+model ScanLog {
+  id         String   @id @default(uuid())
+  status     String   @default("success") @db.VarChar(10) // 'success' | 'error'
+  created_at DateTime @default(now())
+
+  @@index([created_at])
+}

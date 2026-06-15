@@ -114,6 +114,15 @@ export async function POST(request: Request) {
       },
     });
 
+    // Clean up Supabase storage: delete image to save space
+    // It's safe to do this asynchronously in the background
+    if (data.image_url) {
+      const { deleteFormImage } = await import("@/lib/storage");
+      deleteFormImage(data.image_url).catch((err) => 
+        console.warn("Background image deletion failed:", err)
+      );
+    }
+
     return NextResponse.json(submission, { status: 201 });
   } catch (error) {
     console.error("POST /api/submissions error:", error);

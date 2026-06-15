@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ScanStepper } from "@/components/scan/ScanStepper";
-import { ImageCapture } from "@/components/scan/ImageCapture";
-import { ProcessingState } from "@/components/scan/ProcessingState";
+import { ImageCapture, ImageFile } from "@/components/scan/ImageCapture";
+import { BatchProcessingState, BatchResultItem } from "@/components/scan/ProcessingState";
 import { ScanPreview } from "@/components/scan/ScanPreview";
+import { useScanStore } from "@/store/scan-store";
 import { toast } from "sonner";
 import { Lightbulb, Camera, CheckCircle2, Info, FileText } from "lucide-react";
 import {
@@ -39,39 +40,59 @@ const TIPS = [
 
 export default function ScanPage() {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [parsedData, setParsedData] = useState<any>(null);
+  const { step, setStep, images, setImages, batchResults, setBatchResults, resetScan } = useScanStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
-  const handleCaptureComplete = (src: string) => {
-    setImageSrc(src);
+  const handleCaptureComplete = (capturedImages: ImageFile[]) => {
+    setImages(capturedImages);
     setStep(2);
   };
-  const handleProcessingComplete = (data: any) => {
-    setParsedData(data);
+  
+  const handleProcessingComplete = (results: BatchResultItem[]) => {
+    setBatchResults(results);
     setStep(3);
   };
+  
   const handleCancel = () => {
     setShowCancelDialog(true);
   };
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmitAll = async (itemsToSave: any[]) => {
+    if (itemsToSave.length === 0) {
+      toast.error("Tidak ada dokumen yang dipilih untuk disimpan");
+      return;
+    }
+
     setIsSubmitting(true);
+    let successCount = 0;
+    
+    // We submit them sequentially to the existing single-submission API
+    // Or we could create a batch API, but this is simpler for now
     try {
-      const res = await fetch("/api/submissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (res.ok) {
-        toast.success("Data berhasil disimpan");
-        router.push("/dashboard");
-      } else {
-        const err = await res.json();
-        toast.error(err.error || err.message || "Gagal menyimpan data");
+      for (const item of itemsToSave) {
+        const res = await fetch("/api/submissions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item),
+        });
+        
+        if (res.ok) {
+          successCount++;
+        }
       }
+      
+      if (successCount === itemsToSave.length) {
+        toast.success(`${successCount} dokumen berhasil disimpan`);
+        resetScan();
+      } else if (successCount > 0) {
+        toast.warning(`${successCount} dari ${itemsToSave.length} dokumen berhasil disimpan`);
+        resetScan();
+      } else {
+        toast.error("Gagal menyimpan semua dokumen");
+      }
+      
+      router.push("/dashboard");
     } catch {
       toast.error("Terjadi kesalahan jaringan");
     } finally {
@@ -87,7 +108,7 @@ export default function ScanPage() {
           Scan Form Baru
         </h1>
         <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium">
-          Upload atau foto form rekap HR untuk diekstrak otomatis
+          Upload atau foto form rekap HR untuk diekstrak otomatis (Maks 10)
         </p>
       </div>
 
@@ -105,17 +126,17 @@ export default function ScanPage() {
             {/* Step content */}
             <div className="p-5">
               {step === 1 && <ImageCapture onCapture={handleCaptureComplete} />}
-              {step === 2 && imageSrc && (
-                <ProcessingState
-                  imageSrc={imageSrc}
+              {step === 2 && images.length > 0 && (
+                <BatchProcessingState
+                  images={images}
                   onComplete={handleProcessingComplete}
+                  onCancel={handleCancel}
                 />
               )}
-              {step === 3 && imageSrc && parsedData && (
+              {step === 3 && batchResults.length > 0 && (
                 <ScanPreview
-                  imageSrc={imageSrc}
-                  initialData={parsedData}
-                  onSubmit={handleSubmit}
+                  results={batchResults}
+                  onSubmitAll={handleSubmitAll}
                   onCancel={handleCancel}
                   isSubmitting={isSubmitting}
                 />
@@ -153,7 +174,7 @@ export default function ScanPage() {
               </div>
               <div className="mx-5 mb-5 p-3 rounded-xl bg-blue-50 border border-blue-100 flex gap-2 text-xs text-blue-700">
                 <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                Sistem mengenali form SP, Cuti, dan Ijin secara otomatis.
+                Sistem mengenali form SP, Cuti, dan Ijin secara otomatis. Anda dapat memindai hingga 10 dokumen sekaligus.
               </div>
             </div>
           </div>
@@ -178,6 +199,7 @@ export default function ScanPage() {
               className="bg-red-600 hover:bg-red-700 text-white font-medium animate-none"
               onClick={() => {
                 setShowCancelDialog(false);
+                resetScan();
                 router.push("/dashboard");
               }}
             >

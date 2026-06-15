@@ -2,97 +2,115 @@
 
 import { useState, useRef, useCallback, DragEvent } from "react";
 import Webcam from "react-webcam";
-import {
-  Camera,
-  Upload,
-  RefreshCcw,
-  Check,
-  Image as ImageIcon,
-  X,
-} from "lucide-react";
+import { Camera, Upload, X, Plus, Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+const MAX_FILES = 10;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+export interface ImageFile {
+  id: string;
+  src: string; // base64 data URL
+  name: string;
+}
 
 interface ImageCaptureProps {
-  onCapture: (imageSrc: string) => void;
+  onCapture: (images: ImageFile[]) => void;
 }
 
 export function ImageCapture({ onCapture }: ImageCaptureProps) {
-  const [mode, setMode] = useState<"options" | "camera" | "preview">("options");
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [mode, setMode] = useState<"options" | "camera">("options");
+  const [images, setImages] = useState<ImageFile[]>([]);
   const [dragging, setDragging] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleCapture = useCallback(() => {
+  const generateId = () =>
+    `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+  const handleCameraCapture = useCallback(() => {
     const src = webcamRef.current?.getScreenshot();
     if (src) {
-      setImageSrc(src);
-      setMode("preview");
+      if (images.length >= MAX_FILES) {
+        toast.error(`Maksimal ${MAX_FILES} gambar`);
+        return;
+      }
+      setImages((prev) => [
+        ...prev,
+        { id: generateId(), src, name: `camera_${prev.length + 1}.jpg` },
+      ]);
+      setMode("options");
     }
-  }, []);
+  }, [images.length]);
 
-  const processFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImageSrc(reader.result as string);
-      setMode("preview");
-    };
-    reader.readAsDataURL(file);
+  const processFiles = (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const remaining = MAX_FILES - images.length;
+
+    if (remaining <= 0) {
+      toast.error(`Maksimal ${MAX_FILES} gambar`);
+      return;
+    }
+
+    const validFiles = fileArray
+      .filter((f) => {
+        if (!f.type.startsWith("image/")) {
+          toast.error(`${f.name} bukan file gambar`);
+          return false;
+        }
+        if (f.size > MAX_FILE_SIZE) {
+          toast.error(`${f.name} melebihi batas 10MB`);
+          return false;
+        }
+        return true;
+      })
+      .slice(0, remaining);
+
+    if (fileArray.length > remaining) {
+      toast.warning(
+        `Hanya ${remaining} gambar lagi yang bisa ditambahkan (maks ${MAX_FILES})`,
+      );
+    }
+
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImages((prev) => {
+          if (prev.length >= MAX_FILES) return prev;
+          return [
+            ...prev,
+            { id: generateId(), src: reader.result as string, name: file.name },
+          ];
+        });
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (e.target.files) processFiles(e.target.files);
+    // Reset input so same files can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) processFile(file);
+    if (e.dataTransfer.files) processFiles(e.dataTransfer.files);
   };
 
-  const reset = () => {
-    setImageSrc(null);
-    setMode("options");
+  const removeImage = (id: string) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
-  // ── Preview ──────────────────────────────────────────
-  if (mode === "preview" && imageSrc) {
-    return (
-      <div className="flex flex-col gap-4 w-full animate-fade-up">
-        <div className="w-full aspect-[3/4] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 relative shadow-sm max-h-[70vh]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageSrc}
-            alt="Preview"
-            className="w-full h-full object-contain"
-          />
-          <button
-            onClick={reset}
-            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            className="flex-1 h-12 rounded-full"
-            onClick={reset}
-          >
-            Foto Ulang
-          </Button>
-          <Button
-            className="flex-1 h-12 rounded-full bg-[#1767AF] hover:bg-[#1356A0] text-white"
-            onClick={() => imageSrc && onCapture(imageSrc)}
-          >
-            Gunakan Foto
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const handleProceed = () => {
+    if (images.length === 0) {
+      toast.error("Pilih minimal 1 gambar");
+      return;
+    }
+    onCapture(images);
+  };
 
   // ── Camera ────────────────────────────────────────────
   if (mode === "camera") {
@@ -116,18 +134,24 @@ export function ImageCapture({ onCapture }: ImageCaptureProps) {
           {/* Shutter */}
           <div className="absolute bottom-5 left-0 w-full flex justify-center">
             <button
-              onClick={handleCapture}
+              onClick={handleCameraCapture}
               className="w-16 h-16 rounded-full border-4 border-white/60 flex items-center justify-center focus:outline-none active:scale-90 transition-transform"
             >
               <div className="w-12 h-12 rounded-full bg-white shadow-lg" />
             </button>
           </div>
           <button
-            onClick={reset}
+            onClick={() => setMode("options")}
             className="absolute top-4 left-4 text-white/80 hover:text-white text-sm font-medium bg-black/30 px-3 py-1 rounded-lg transition-colors"
           >
-            ✕ Batal
+            ✕ Kembali
           </button>
+          {/* Counter badge */}
+          {images.length > 0 && (
+            <div className="absolute top-4 right-4 bg-[#1767AF] text-white text-xs font-bold px-2.5 py-1 rounded-full">
+              {images.length}/{MAX_FILES}
+            </div>
+          )}
         </div>
         <p className="text-xs text-slate-500 text-center">
           Pastikan seluruh form terlihat jelas dalam frame
@@ -136,9 +160,64 @@ export function ImageCapture({ onCapture }: ImageCaptureProps) {
     );
   }
 
-  // ── Options ───────────────────────────────────────────
+  // ── Options (with thumbnail preview if images exist) ───
   return (
     <div className="flex flex-col gap-4 w-full animate-fade-up">
+      {/* Thumbnail Grid Preview */}
+      {images.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Images className="w-4 h-4 text-[#1767AF]" />
+              <span className="text-sm font-semibold text-slate-800">
+                Dokumen Terpilih
+              </span>
+            </div>
+            <span className="text-xs font-bold text-[#1767AF] bg-blue-50 px-2.5 py-1 rounded-full">
+              {images.length}/{MAX_FILES}
+            </span>
+          </div>
+          <div className="grid grid-cols-5 sm:grid-cols-5 gap-2">
+            {images.map((img, idx) => (
+              <div
+                key={img.id}
+                className="relative group aspect-[3/4] rounded-xl overflow-hidden border-2 border-slate-200 bg-slate-100 hover:border-[#1767AF]/40 transition-colors"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.src}
+                  alt={`Dokumen ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                {/* Index badge */}
+                <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                  {idx + 1}
+                </div>
+                {/* Remove button */}
+                <button
+                  onClick={() => removeImage(img.id)}
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            {/* Add more button (if under limit) */}
+            {images.length < MAX_FILES && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="aspect-[3/4] rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-1 hover:border-[#1767AF]/40 hover:bg-blue-50/30 transition-all"
+              >
+                <Plus className="w-5 h-5 text-slate-400" />
+                <span className="text-[10px] text-slate-400 font-medium">
+                  Tambah
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Camera Button */}
       <button
         onClick={() => setMode("camera")}
@@ -152,7 +231,7 @@ export function ImageCapture({ onCapture }: ImageCaptureProps) {
             Foto via Kamera
           </p>
           <p className="text-xs text-slate-500 mt-0.5">
-            Gunakan kamera untuk foto form secara langsung
+            Ambil foto form satu per satu via kamera
           </p>
         </div>
       </button>
@@ -189,7 +268,7 @@ export function ImageCapture({ onCapture }: ImageCaptureProps) {
             {dragging ? "Lepaskan untuk upload" : "Upload File Gambar"}
           </p>
           <p className="text-xs text-slate-400 mt-0.5">
-            Drag & drop atau klik — JPG, PNG, WEBP
+            Drag & drop atau klik — JPG, PNG, WEBP (maks {MAX_FILES} file)
           </p>
         </div>
       </div>
@@ -197,10 +276,21 @@ export function ImageCapture({ onCapture }: ImageCaptureProps) {
       <input
         type="file"
         accept="image/jpeg,image/png,image/webp"
+        multiple
         className="hidden"
         ref={fileInputRef}
         onChange={handleFileUpload}
       />
+
+      {/* Proceed button (when images selected) */}
+      {images.length > 0 && (
+        <Button
+          onClick={handleProceed}
+          className="w-full h-12 rounded-full bg-[#1767AF] hover:bg-[#1356A0] text-white text-sm cursor-pointer font-semibold"
+        >
+          Proses {images.length} Dokumen
+        </Button>
+      )}
     </div>
   );
 }

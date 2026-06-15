@@ -43,20 +43,64 @@ export interface ExtractedFormData {
   semua_ttd_lengkap: boolean;
 }
 
+/* ───────────────────── Retry Helper ───────────────────── */
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 2000
+): Promise<T> {
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      const errorMsg = error.message || String(error);
+      
+      // Only retry on transient errors (503, 429, network errors)
+      const isRetryable =
+        errorMsg.includes("503") ||
+        errorMsg.includes("429") ||
+        errorMsg.includes("Service Unavailable") ||
+        errorMsg.includes("RESOURCE_EXHAUSTED") ||
+        errorMsg.includes("overloaded") ||
+        errorMsg.includes("high demand") ||
+        errorMsg.includes("ECONNRESET") ||
+        errorMsg.includes("ETIMEDOUT");
+
+      if (!isRetryable || attempt === maxRetries) {
+        throw error;
+      }
+
+      // Exponential backoff: 2s, 4s, 8s
+      const delay = baseDelayMs * Math.pow(2, attempt);
+      console.log(`Gemini API attempt ${attempt + 1} failed (${errorMsg}). Retrying in ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+}
+
 /* ───────────────────────── Main Function ───────────────────────── */
 
 /**
  * Hybrid parsing: receives OCR text for field extraction + image buffer
  * for visual signature (TTD) detection. Single Gemini API call.
+ *
+ * SECURITY: Employee database is NOT sent to Gemini.
+ * Matching is done locally on the server after Gemini returns raw extracted data.
  */
 export async function parseFormWithGemini(
   ocrText: string,
   imageBuffer: Buffer,
-  mimeType: string,
-  employeeListJson: string
+  mimeType: string
 ): Promise<ExtractedFormData> {
+  // Use gemini-2.5-flash (not lite) for better visual accuracy on signatures
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     generationConfig: {
       responseMimeType: "application/json",
       temperature: 0.1,
@@ -80,9 +124,6 @@ TEKS OCR DARI FORM:
 ---
 ${ocrText}
 ---
-
-DATABASE KARYAWAN (gunakan untuk validasi dan koreksi nama/NIK):
-${employeeListJson}
 
 ═══════════════════════════════════════
 FORM YANG DIKENALI (hanya 2 jenis):
@@ -118,13 +159,13 @@ INSTRUKSI PARSING:
 
 3. **NIK (No. Register / No. Reg.)**:
    - Bisa format angka saja ("26010356") atau campuran ("1701p0037")
-   - Cocokkan dengan database karyawan jika memungkinkan
-   - Jika cocok, gunakan NIK dari database
+   - Ekstrak PERSIS seperti yang tertulis di form tanpa koreksi
+   - JANGAN menebak atau mengubah NIK
 
 4. **NAMA KARYAWAN**:
-   - Cocokkan ke database karyawan menggunakan fuzzy matching
-   - Jika ada yang mirip (typo OCR), gunakan nama dari database
-   - Set "corrected": true dan catat teks asli OCR di "original"
+   - Ekstrak PERSIS seperti yang tertulis di form
+   - Jika tulisan tangan sulit dibaca, beri confidence rendah
+   - JANGAN menebak atau mengkoreksi nama. Tulis apa adanya dari form
 
 5. **BAGIAN**: Field "Bagian" pada form (contoh: "Gudang / Inventory Control", "Operator Produksi")
 
@@ -142,21 +183,27 @@ INSTRUKSI PARSING:
 
 9. **ALASAN** (SP saja): Isi lengkap dari field "Alasan: ___", pertahankan detail pelanggaran
 
-10. **TANDA TANGAN (TTD)** — ⚠️ GUNAKAN GAMBAR ASLI UNTUK VERIFIKASI VISUAL:
-    Lihat area tanda tangan di bagian bawah form. Ada 3 kolom TTD.
-    Untuk SETIAP kolom, tentukan apakah ada tanda tangan (coretan/goresan tinta) atau kosong.
+10. **TANDA TANGAN (TTD)** — ⚠️ WAJIB GUNAKAN GAMBAR ASLI UNTUK VERIFIKASI VISUAL:
+    Lihat bagian BAWAH gambar form. Di sana ada 3 kotak/kolom untuk tanda tangan.
+    Untuk SETIAP kotak, periksa secara visual apakah ada goresan tinta pulpen.
 
-    PENTING!!! Personalia / HR sering kali tanda tangan melampaui garis kotak, atau bentuknya hanya coretan kecil, lengkungan melingkar, garis tak beraturan, atau huruf sambung. JANGAN HANYA mencari tanda tangan konvensional. APA PUN jenis coretan yang ada di kotak / menimpa garis kolom tersebut HARUS DIHITUNG SEBAGAI "signed": true. 
+    ⚠️⚠️⚠️ ATURAN DETEKSI TTD (SANGAT PENTING):
+    - Tanda tangan bisa berupa paraf singkat, inisial kecil (misal "T.d"), coretan melengkung, atau huruf sambung.
+    - KHUSUS kotak "Personalia" (paling kiri): TTD-nya seringkali SANGAT KECIL.
+    - BAGAIMANA MEMBEDAKAN KOSONG vs ADA TTD:
+      * Anggap "signed": true JIKA ANDA MELIHAT ADA GORESAN TINTA PULPEN (hitam/biru) yang sengaja ditulis oleh manusia, sekecil apapun itu (seperti inisial "T.d").
+      * Anggap "signed": false JIKA KOTAK KOSONG BERSIH. 
+      * PENTING: ABAIKAN bayangan, lipatan kertas, debu, kotoran scan, atau garis batas tabel (border). Jangan menganggap bayangan kertas atau garis tabel sebagai tanda tangan! Coretan harus terlihat seperti hasil tulisan tangan.
 
-    Untuk Cuti/Ijin:
-    - slot_1: label "Personalia" → cek coretan di kotak Personalia. Seringkali berupa lingkaran/coretan melengkung yang menabrak garis tepi. Wajib teliti!
-    - slot_2: label "Supervisor/Manager" → cek coretan di kotak Supervisor/Manager.
-    - slot_3: label "Pemohon" → cek coretan di kotak Pemohon.
+    Untuk Cuti/Ijin (3 kotak dari kiri ke kanan):
+    - slot_1: label "Personalia" (kotak paling kiri)
+    - slot_2: label "Supervisor/Manager" (kotak tengah)
+    - slot_3: label "Pemohon" (kotak paling kanan)
 
-    Untuk SP:
-    - slot_1: label "Personalia"
-    - slot_2: label "Manager"
-    - slot_3: label "Supervisor"
+    Untuk SP (3 kotak dari kiri ke kanan):
+    - slot_1: label "Personalia" (kotak paling kiri)
+    - slot_2: label "Manager" (kotak tengah)
+    - slot_3: label "Supervisor" (kotak paling kanan)
 
     "semua_ttd_lengkap": true HANYA jika ketiga slot signed = true
 
@@ -172,7 +219,7 @@ RESPONSE FORMAT (JSON strict):
   "jenis_form": "CUTI",
   "fields": {
     "nik":             { "value": "1701p0037",     "confidence": 0.90, "corrected": false },
-    "nama_karyawan":   { "value": "Sukermanto",    "confidence": 0.95, "corrected": true, "original": "Sukermanto" },
+    "nama_karyawan":   { "value": "Sukermanto",    "confidence": 0.95, "corrected": false },
     "departemen":      { "value": "Ppic",          "confidence": 0.90, "corrected": false },
     "bagian":          { "value": "Gudang / Inventory Control", "confidence": 0.85, "corrected": false },
     "tanggal_surat":   { "value": "2026-05-22",    "confidence": 0.95, "corrected": false },
@@ -182,15 +229,15 @@ RESPONSE FORMAT (JSON strict):
     "alasan":          { "value": null,            "confidence": 1.0,  "corrected": false }
   },
   "tanda_tangan": {
-    "slot_1": { "label": "Personalia",        "signed": false },
+    "slot_1": { "label": "Personalia",        "signed": true },
     "slot_2": { "label": "Supervisor/Manager","signed": true },
     "slot_3": { "label": "Pemohon",           "signed": true }
   },
-  "semua_ttd_lengkap": false
+  "semua_ttd_lengkap": true
 }
 `;
 
-  try {
+  return withRetry(async () => {
     const result = await model.generateContent([prompt, imagePart]);
     const responseText = result.response.text();
 
@@ -216,8 +263,5 @@ RESPONSE FORMAT (JSON strict):
     }
 
     return parsedData;
-  } catch (error: any) {
-    console.error("Error calling Gemini API:", error);
-    throw new Error(`Gemini parsing failed: ${error.message || error}`);
-  }
+  });
 }

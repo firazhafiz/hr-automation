@@ -67,3 +67,34 @@ export async function uploadFormImage(
 
   return data.publicUrl;
 }
+
+/**
+ * Deletes a form image from Supabase Storage by its public URL.
+ * Used to free up storage after form data has been saved to the database.
+ * Fails silently (logs warning) to not break the main flow.
+ */
+export async function deleteFormImage(publicUrl: string): Promise<void> {
+  try {
+    // Extract filename from URL: .../form-images/1234-abc.jpg → 1234-abc.jpg
+    const url = new URL(publicUrl);
+    const pathParts = url.pathname.split("/");
+    const fileName = pathParts[pathParts.length - 1];
+
+    if (!fileName) {
+      console.warn("Could not extract filename from URL:", publicUrl);
+      return;
+    }
+
+    const { error } = await supabaseAdmin.storage
+      .from(BUCKET_NAME)
+      .remove([fileName]);
+
+    if (error) {
+      console.warn(`Failed to delete image ${fileName}:`, error.message);
+    } else {
+      console.log(`Deleted image from storage: ${fileName}`);
+    }
+  } catch (err: any) {
+    console.warn("Error deleting form image:", err.message);
+  }
+}
