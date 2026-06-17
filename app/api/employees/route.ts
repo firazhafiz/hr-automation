@@ -31,15 +31,6 @@ export async function GET(request: Request) {
         orderBy: { nama: "asc" },
         skip,
         take: limit,
-        include: {
-          _count: {
-            select: {
-              submissions: {
-                where: { is_deleted: false }
-              }
-            }
-          }
-        }
       }),
       prisma.employee.count({ where }),
     ]);

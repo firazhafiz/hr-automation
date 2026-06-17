@@ -19,6 +19,7 @@ export async function GET(
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const bulan = searchParams.get("bulan"); // format: "YYYY-MM"
+    const jenisForm = searchParams.get("jenisForm"); // format: "CUTI", "IJIN", "SP", or "SEMUA"
 
     const employee = await prisma.employee.findUnique({
       where: { id },
@@ -29,7 +30,14 @@ export async function GET(
     }
 
     // Build date filter — SP forms may have null tanggal_mulai, fall back to created_at
-    let submissionWhere: Prisma.FormSubmissionWhereInput = { employee_id: id, is_deleted: false };
+    let submissionWhere: Prisma.FormSubmissionWhereInput = { 
+      employee_id: id, 
+      is_deleted: false 
+    };
+
+    if (jenisForm && jenisForm !== "SEMUA") {
+      submissionWhere.jenis_form = jenisForm as any;
+    }
     if (bulan) {
       const [year, month] = bulan.split("-").map(Number);
       const startDate = new Date(year, month - 1, 1);

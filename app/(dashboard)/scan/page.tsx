@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ScanStepper } from "@/components/scan/ScanStepper";
 import { ImageCapture, ImageFile } from "@/components/scan/ImageCapture";
-import { BatchProcessingState, BatchResultItem } from "@/components/scan/ProcessingState";
+import {
+  BatchProcessingState,
+  BatchResultItem,
+} from "@/components/scan/ProcessingState";
 import { ScanPreview } from "@/components/scan/ScanPreview";
 import { useScanStore } from "@/store/scan-store";
 import { toast } from "sonner";
@@ -40,7 +43,15 @@ const TIPS = [
 
 export default function ScanPage() {
   const router = useRouter();
-  const { step, setStep, images, setImages, batchResults, setBatchResults, resetScan } = useScanStore();
+  const {
+    step,
+    setStep,
+    images,
+    setImages,
+    batchResults,
+    setBatchResults,
+    resetScan,
+  } = useScanStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
@@ -48,12 +59,12 @@ export default function ScanPage() {
     setImages(capturedImages);
     setStep(2);
   };
-  
+
   const handleProcessingComplete = (results: BatchResultItem[]) => {
     setBatchResults(results);
     setStep(3);
   };
-  
+
   const handleCancel = () => {
     setShowCancelDialog(true);
   };
@@ -66,7 +77,7 @@ export default function ScanPage() {
 
     setIsSubmitting(true);
     let successCount = 0;
-    
+
     // We submit them sequentially to the existing single-submission API
     // Or we could create a batch API, but this is simpler for now
     try {
@@ -76,22 +87,24 @@ export default function ScanPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(item),
         });
-        
+
         if (res.ok) {
           successCount++;
         }
       }
-      
+
       if (successCount === itemsToSave.length) {
         toast.success(`${successCount} dokumen berhasil disimpan`);
         resetScan();
       } else if (successCount > 0) {
-        toast.warning(`${successCount} dari ${itemsToSave.length} dokumen berhasil disimpan`);
+        toast.warning(
+          `${successCount} dari ${itemsToSave.length} dokumen berhasil disimpan`,
+        );
         resetScan();
       } else {
         toast.error("Gagal menyimpan semua dokumen");
       }
-      
+
       router.push("/dashboard");
     } catch {
       toast.error("Terjadi kesalahan jaringan");
@@ -117,7 +130,7 @@ export default function ScanPage() {
       >
         {/* ── Main Card ── */}
         <div className={`${step < 3 ? "lg:col-span-2" : ""}`}>
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-300 overflow-hidden">
             {/* Stepper */}
             <div className="px-5 pt-5 pb-4 border-b border-slate-100">
               <ScanStepper currentStep={step} />
@@ -148,7 +161,7 @@ export default function ScanPage() {
         {/* ── Tips Sidebar (step 1 & 2 only, desktop only) ── */}
         {step < 3 && (
           <div className="hidden lg:block lg:col-span-1 sticky top-6">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-300 overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
                 <Lightbulb className="w-4 h-4 text-amber-500" />
                 <h2 className="text-sm font-semibold text-slate-800">
@@ -174,7 +187,8 @@ export default function ScanPage() {
               </div>
               <div className="mx-5 mb-5 p-3 rounded-xl bg-blue-50 border border-blue-100 flex gap-2 text-xs text-blue-700">
                 <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                Sistem mengenali form SP, Cuti, dan Ijin secara otomatis. Anda dapat memindai hingga 10 dokumen sekaligus.
+                Sistem mengenali form SP, Cuti, dan Ijin secara otomatis. Anda
+                dapat memindai hingga 10 dokumen sekaligus.
               </div>
             </div>
           </div>

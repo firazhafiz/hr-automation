@@ -147,12 +147,14 @@ B) "SURAT PERMOHONAN PERINGATAN / PHK" (Form TPF-0811)
 INSTRUKSI PARSING:
 ═══════════════════════════════════════
 
-1. **JENIS FORM**:
-   - Cari keyword di title OCR: "CUTI" atau "IJIN" → form Cuti/Ijin
-   - Cari keyword: "PERINGATAN" atau "PHK" atau "SP" → form SP
-   - Untuk Cuti/Ijin: cek checkbox mana yang tercentang (☑/✓/X):
-     * Centang di "CUTI" → jenis_form: "CUTI"
-     * Centang di "IJIN" atau "IZIN" → jenis_form: "IJIN"
+1. **JENIS FORM** (PENENTUAN SANGAT KRITIS BERDASARKAN GAMBAR VISUAL):
+   - Lihat LABEL SURAT / JUDUL UTAMA di tengah atas gambar, tepat di bawah tulisan "PT. TOSHIN PRIMA...":
+     * Jika tertulis "SURAT PERMOHONAN PERINGATAN / PHK", maka 100% ini adalah "SP". JANGAN PERNAH menganggapnya Cuti/Ijin.
+     * Jika tertulis "PERMOHONAN CUTI / IJIN", maka form ini adalah form Cuti/Ijin.
+   - KHUSUS JIKA FORM CUTI/IJIN: Anda WAJIB memeriksa secara VISUAL kotak (checkbox) mana yang ditandai (☑/✓/X) menggunakan tinta pulpen:
+     * Jika coretan pena berada di kotak tulisan "CUTI" → jenis_form: "CUTI"
+     * Jika coretan pena berada di kotak tulisan "IJIN" atau "IZIN" → jenis_form: "IJIN"
+     * Abaikan teks OCR yang mungkin keliru terbaca, pastikan Anda melihat GORESAN PENA ASLI pada area checkbox di gambar aslinya.
 
 2. **FORMAT TEKS (PENTING)**:
    - Nama, Bagian, dan Departemen HARUS ditulis dalam format Title Case (Huruf Kapital di awal setiap kata). Contoh: "Rafid Nur Rasyidin E", "Produksi", "Quality Control".

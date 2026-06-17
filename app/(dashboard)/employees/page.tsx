@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EmployeeCard } from "@/components/employees/EmployeeCard";
+import { EmployeeTable } from "@/components/employees/EmployeeTable";
 import { EmployeeModal } from "@/components/employees/EmployeeModal";
 
 const PAGE_SIZE = 12;
@@ -93,24 +93,17 @@ export default function EmployeesPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
         <Input
           placeholder="Cari nama, NIK, atau departemen..."
-          className="pl-9 h-11 bg-white border-slate-400 rounded-md"
+          className="pl-9 h-11 bg-white border-slate-300 rounded-md transition-colors focus-visible:ring-1 focus-visible:ring-slate-300"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
         />
       </div>
 
-      {/* Grid */}
+      {/* Grid / Table */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-            <div
-              key={i}
-              className="h-44 bg-white rounded-2xl border border-slate-100 animate-pulse"
-            />
-          ))}
-        </div>
+        <div className="w-full h-64 bg-white rounded-xl border border-slate-200 animate-pulse" />
       ) : result.data.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-slate-100">
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-slate-200">
           <UserCircle2 className="w-12 h-12 text-slate-200 mb-4" />
           <p className="font-semibold text-slate-600">
             Tidak ada data karyawan
@@ -120,21 +113,9 @@ export default function EmployeesPage() {
               ? `Tidak ditemukan hasil untuk "${search}"`
               : "Belum ada karyawan yang terdaftar"}
           </p>
-          {!search && (
-            <Button
-              className="mt-5 bg-[#1767AF] hover:bg-[#1356A0] text-white"
-              onClick={() => setIsModalOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" /> Tambah Karyawan
-            </Button>
-          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {result.data.map((emp) => (
-            <EmployeeCard key={emp.id} employee={emp} />
-          ))}
-        </div>
+        <EmployeeTable employees={result.data} />
       )}
 
       {/* Pagination */}

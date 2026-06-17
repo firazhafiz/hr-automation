@@ -85,37 +85,67 @@ export default function EmployeeDetailPage() {
     ijin: 0,
     total: 0,
   });
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [bulan, setBulan] = useState<string>("");
+  const [jenisForm, setJenisForm] = useState<string>("SEMUA");
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteEmployeeOpen, setIsDeleteEmployeeOpen] = useState(false);
+  const [isDeletingEmployee, setIsDeletingEmployee] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    try {
-      const paramsStr = bulan ? `?bulan=${bulan}` : "";
-      const res = await fetch(`/api/employees/${id}${paramsStr}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error("Not found");
-      const data = await res.json();
-      setEmployee(data.employee);
-      setSubmissions(data.submissions);
-      setSummary(data.summary);
-    } catch {
-      toast.error("Gagal memuat data karyawan");
-      router.push("/employees");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, bulan, router]);
+  const fetchData = useCallback(
+    async (isFirstLoad = false) => {
+      if (!id) return;
+      if (isFirstLoad) {
+        setInitialLoading(true);
+      } else {
+        setListLoading(true);
+      }
 
+      try {
+        const params = new URLSearchParams();
+        if (bulan) params.append("bulan", bulan);
+        if (jenisForm) params.append("jenisForm", jenisForm);
+
+        const res = await fetch(`/api/employees/${id}?${params.toString()}`);
+        if (!res.ok) {
+          if (res.status === 404) {
+            router.push("/employees");
+            toast.error("Karyawan tidak ditemukan");
+            return;
+          }
+          throw new Error("Failed to fetch");
+        }
+
+        const json = await res.json();
+        setEmployee(json.employee);
+        setSubmissions(json.submissions);
+        setSummary(json.summary);
+      } catch (err) {
+        console.error(err);
+        toast.error("Gagal memuat data");
+      } finally {
+        setInitialLoading(false);
+        setListLoading(false);
+      }
+    },
+    [id, bulan, jenisForm, router],
+  );
+
+  // First load
   useEffect(() => {
-    fetchData();
+    fetchData(true);
   }, [fetchData]);
+
+  // Subsequent filter loads
+  useEffect(() => {
+    if (!initialLoading) {
+      fetchData(false);
+    }
+  }, [bulan, jenisForm]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -126,11 +156,32 @@ export default function EmployeeDetailPage() {
       });
       if (res.ok) {
         toast.success("Rekap berhasil dihapus");
-        fetchData();
+        fetchData(false);
       } else toast.error("Gagal menghapus rekap");
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
+    }
+  };
+
+  const handleDeleteEmployee = async () => {
+    if (!id) return;
+    setIsDeletingEmployee(true);
+    try {
+      const res = await fetch(`/api/employees/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Karyawan berhasil dihapus");
+        router.push("/employees");
+      } else {
+        toast.error("Gagal menghapus karyawan");
+      }
+    } catch {
+      toast.error("Terjadi kesalahan");
+    } finally {
+      setIsDeletingEmployee(false);
+      setIsDeleteEmployeeOpen(false);
     }
   };
 
@@ -151,7 +202,7 @@ export default function EmployeeDetailPage() {
   const now = new Date();
   const currentYear = now.getFullYear();
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 text-[#1767AF] animate-spin" />
@@ -169,11 +220,11 @@ export default function EmployeeDetailPage() {
         className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors group"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-        Kembali ke Data Karyawan
+        Kembali
       </Link>
 
       {/* Profile Header Card */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-300 overflow-hidden">
         <div className="p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-5">
           {/* Avatar */}
           <div
@@ -206,15 +257,25 @@ export default function EmployeeDetailPage() {
             </div>
           </div>
 
-          {/* Edit Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="shrink-0 self-start sm:self-center"
-            onClick={() => setIsEditOpen(true)}
-          >
-            <Edit2 className="w-3.5 h-3.5 mr-1.5" /> Edit
-          </Button>
+          {/* Actions */}
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditOpen(true)}
+              className="cursor-pointer "
+            >
+              <Edit2 className="w-3.5 h-3.5 mr-1.5 " /> Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setIsDeleteEmployeeOpen(true)}
+              className="cursor-pointer "
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Hapus
+            </Button>
+          </div>
         </div>
 
         {/* Summary Stats */}
@@ -243,7 +304,7 @@ export default function EmployeeDetailPage() {
       </div>
 
       {/* Riwayat Section */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-3 overflow-hidden">
         {/* Header + Filter */}
         <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -254,10 +315,23 @@ export default function EmployeeDetailPage() {
             </span>
           </div>
 
-          {/* Month filter */}
-          <div className="flex items-center gap-2">
+          {/* Filters */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Jenis Form selector */}
             <select
-              className="h-9 px-3 text-sm border border-slate-200 rounded-md text-slate-700 focus:outline-none"
+              className="h-9 px-3 text-sm border border-slate-200 rounded-md text-slate-700 focus:outline-none bg-white cursor-pointer"
+              value={jenisForm}
+              onChange={(e) => setJenisForm(e.target.value)}
+            >
+              <option value="SEMUA">Semua Form</option>
+              <option value="SP">SP / PHK</option>
+              <option value="CUTI">Cuti</option>
+              <option value="IJIN">Izin</option>
+            </select>
+
+            {/* Month filter */}
+            <select
+              className="h-9 px-3 text-sm border border-slate-200 rounded-md text-slate-700 focus:outline-none bg-white cursor-pointer"
               value={bulan}
               onChange={(e) => setBulan(e.target.value)}
             >
@@ -275,12 +349,31 @@ export default function EmployeeDetailPage() {
         </div>
 
         {/* Submissions list */}
-        {submissions.length === 0 ? (
+        {listLoading ? (
+          <div className="divide-y divide-slate-50">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="px-5 sm:px-6 py-4 flex items-center gap-4 animate-pulse"
+              >
+                <div className="w-1 h-12 rounded-full bg-slate-200 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2">
+                    <div className="h-4 w-14 bg-slate-200 rounded" />
+                    <div className="h-3 w-16 bg-slate-200 rounded animate-pulse" />
+                  </div>
+                  <div className="h-4 w-2/3 bg-slate-200 rounded" />
+                  <div className="h-3 w-1/3 bg-slate-200 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : submissions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <FileText className="w-10 h-10 text-slate-200 mb-3" />
             <p className="text-slate-500 font-medium">Belum ada rekap</p>
             <p className="text-sm text-slate-400 mt-1">
-              {bulan
+              {bulan || jenisForm !== "SEMUA"
                 ? "Tidak ada data pada periode ini"
                 : "Karyawan ini belum pernah mengajukan form"}
             </p>
@@ -350,6 +443,14 @@ export default function EmployeeDetailPage() {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         isLoading={isDeleting}
+      />
+      <DeleteDialog
+        isOpen={isDeleteEmployeeOpen}
+        onClose={() => setIsDeleteEmployeeOpen(false)}
+        onConfirm={handleDeleteEmployee}
+        isLoading={isDeletingEmployee}
+        title="Hapus Karyawan?"
+        description="Tindakan ini tidak dapat dibatalkan. Karyawan beserta seluruh data rekapnya akan ditandai sebagai dihapus di dalam sistem."
       />
       <EmployeeModal
         isOpen={isEditOpen}

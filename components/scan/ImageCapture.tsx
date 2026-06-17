@@ -221,9 +221,9 @@ export function ImageCapture({ onCapture }: ImageCaptureProps) {
       {/* Camera Button */}
       <button
         onClick={() => setMode("camera")}
-        className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-[#1767AF]/40 hover:bg-blue-50/30 transition-all active:scale-[0.98] group text-left"
+        className="w-full flex items-center gap-4 p-4 rounded-lg border-2 border-slate-200 bg-white hover:border-[#1767AF]/40 hover:bg-blue-50/30 transition-all active:scale-[0.98] group text-left"
       >
-        <div className="w-12 h-12 rounded-xl bg-[#1767AF]/10 flex items-center justify-center shrink-0 group-hover:bg-[#1767AF]/20 transition-colors">
+        <div className="w-12 h-12 rounded-lg bg-[#1767AF]/10 flex items-center justify-center shrink-0 group-hover:bg-[#1767AF]/20 transition-colors">
           <Camera className="w-6 h-6 text-[#1767AF]" />
         </div>
         <div>

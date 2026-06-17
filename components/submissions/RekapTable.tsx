@@ -42,12 +42,20 @@ interface RekapTableProps {
   onView: (id: string) => void;
 }
 
-export function RekapTable({ data, isLoading, onDelete, onView }: RekapTableProps) {
+export function RekapTable({
+  data,
+  isLoading,
+  onDelete,
+  onView,
+}: RekapTableProps) {
   if (isLoading) {
     return (
       <div className="space-y-4 p-4">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-14 bg-slate-50 rounded-md animate-pulse border border-slate-100" />
+          <div
+            key={i}
+            className="h-14 bg-slate-50 rounded-md animate-pulse border border-slate-100"
+          />
         ))}
       </div>
     );
@@ -57,11 +65,23 @@ export function RekapTable({ data, isLoading, onDelete, onView }: RekapTableProp
     return (
       <div className="flex flex-col items-center justify-center p-12 text-center h-64">
         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-          <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <svg
+            className="w-6 h-6 text-slate-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-slate-900">Belum ada data rekap</h3>
+        <h3 className="text-lg font-medium text-slate-900">
+          Belum ada data rekap
+        </h3>
         <p className="text-sm text-slate-500 mt-1 max-w-sm">
           Silakan scan form baru untuk mulai menyimpan rekap data HR.
         </p>
@@ -74,41 +94,66 @@ export function RekapTable({ data, isLoading, onDelete, onView }: RekapTableProp
       <Table>
         <TableHeader className="bg-slate-50/80 sticky top-0 backdrop-blur-sm border-b border-slate-200">
           <TableRow className="hover:bg-transparent">
-            <TableHead className="w-[50px] text-center font-semibold text-slate-600">No</TableHead>
-            <TableHead className="min-w-[150px] font-semibold text-slate-600">Nama Karyawan</TableHead>
+            <TableHead className="w-[50px] text-center font-semibold text-slate-600">
+              No
+            </TableHead>
+            <TableHead className="min-w-[150px] font-semibold text-slate-600">
+              Nama Karyawan
+            </TableHead>
             <TableHead className="font-semibold text-slate-600">NIK</TableHead>
-            <TableHead className="font-semibold text-slate-600">Jenis Form</TableHead>
-            <TableHead className="font-semibold text-slate-600">Bagian / Dept</TableHead>
-            <TableHead className="font-semibold text-slate-600">Tanggal Mulai</TableHead>
-            <TableHead className="text-center font-semibold text-slate-600">Validasi TTD</TableHead>
-            <TableHead className="font-semibold text-slate-600">Tgl Diinput</TableHead>
-            <TableHead className="text-right font-semibold text-slate-600">Aksi</TableHead>
+            <TableHead className="font-semibold text-slate-600">
+              Jenis Form
+            </TableHead>
+            <TableHead className="font-semibold text-slate-600">
+              Departemen
+            </TableHead>
+            <TableHead className="font-semibold text-slate-600">
+              Tanggal Mulai
+            </TableHead>
+            <TableHead className="text-center font-semibold text-slate-600">
+              Validasi TTD
+            </TableHead>
+            <TableHead className="font-semibold text-slate-600">
+              Tgl Diinput
+            </TableHead>
+            <TableHead className="text-center font-semibold text-slate-600">
+              Aksi
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((row, index) => (
-            <TableRow key={row.id} className="hover:bg-slate-50 border-b border-slate-100 transition-colors">
+            <TableRow
+              key={row.id}
+              className="hover:bg-slate-50 border-b border-slate-100 transition-colors"
+            >
               <TableCell className="text-center font-medium text-slate-500">
                 {index + 1}
               </TableCell>
               <TableCell>
-                <div className="font-medium text-slate-900">{row.nama_karyawan}</div>
+                <div className="font-medium text-slate-900">
+                  {row.nama_karyawan}
+                </div>
                 {!row.employee_matched && (
                   <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded uppercase font-semibold">
                     Unregistered
                   </span>
                 )}
               </TableCell>
-              <TableCell className="font-mono text-xs text-slate-600">{row.nik_karyawan || "-"}</TableCell>
+              <TableCell className="font-mono text-xs text-slate-600">
+                {row.nik_karyawan || "-"}
+              </TableCell>
               <TableCell>
-                <Badge variant="outline" className={getBadgeColor(row.jenis_form)}>
+                <Badge
+                  variant="outline"
+                  className={getBadgeColor(row.jenis_form)}
+                >
                   {row.jenis_form}
                 </Badge>
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">
-                  <span className="text-sm text-slate-900">{row.bagian || "-"}</span>
-                  <span className="text-xs text-slate-500">{row.departemen || "-"}</span>
+                  <span className=" text-slate-500">{row.departemen}</span>
                 </div>
               </TableCell>
               <TableCell className="text-slate-600 tabular-nums">
@@ -130,10 +175,20 @@ export function RekapTable({ data, isLoading, onDelete, onView }: RekapTableProp
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => onView(row.id)} title="Lihat Detail">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onView(row.id)}
+                    title="Lihat Detail"
+                  >
                     <Eye className="h-4 w-4 text-slate-500" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(row.id)} title="Hapus">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onDelete(row.id)}
+                    title="Hapus"
+                  >
                     <Trash2 className="h-4 w-4 text-red-500" />
                   </Button>
                 </div>

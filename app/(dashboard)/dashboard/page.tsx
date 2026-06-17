@@ -10,16 +10,43 @@ import { DeleteDialog } from "@/components/submissions/DeleteDialog";
 import { toast } from "sonner";
 import { AlertTriangle, Calendar, FileCheck } from "lucide-react";
 
-const MONTHS = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "Mei",
+  "Jun",
+  "Jul",
+  "Agu",
+  "Sep",
+  "Okt",
+  "Nov",
+  "Des",
+];
 
-function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string }) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  color,
+}: {
+  label: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}) {
   return (
     <div className="rounded-md border border-slate-600 p-4 flex items-center gap-4 bg-slate-100/50">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+      <div
+        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}
+      >
         <Icon className="w-5 h-5" />
       </div>
       <div>
-        <p className="text-2xl font-bold text-slate-900 leading-none">{value}</p>
+        <p className="text-2xl font-bold text-slate-900 leading-none">
+          {value}
+        </p>
         <p className="text-xs text-slate-500 mt-1 font-medium">{label}</p>
       </div>
     </div>
@@ -30,13 +57,26 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
 function exportToCSV(data: FormSubmission[], filename: string) {
   const formatDateCSV = (d: Date | string | null) => {
     if (!d) return "";
-    return new Date(d).toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return new Date(d).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   const headers = [
-    "No", "Nama Karyawan", "NIK", "Jenis Form",
-    "Departemen", "Bagian", "Tanggal Mulai", "Tanggal Selesai",
-    "Tanggal Surat", "Status TTD", "Keterangan/Alasan", "Tgl Input",
+    "No",
+    "Nama Karyawan",
+    "NIK",
+    "Jenis Form",
+    "Departemen",
+    "Bagian",
+    "Tanggal Mulai",
+    "Tanggal Selesai",
+    "Tanggal Surat",
+    "Status TTD",
+    "Keterangan/Alasan",
+    "Tgl Input",
   ];
 
   const rows = data.map((row, i) => [
@@ -50,17 +90,19 @@ function exportToCSV(data: FormSubmission[], filename: string) {
     formatDateCSV(row.tanggal_selesai),
     formatDateCSV(row.tanggal_surat),
     row.ttd_lengkap ? "Lengkap" : "Tidak Lengkap",
-    row.jenis_form === "SP"
-      ? (row.alasan || "")
-      : (row.keterangan || ""),
+    row.jenis_form === "SP" ? row.alasan || "" : row.keterangan || "",
     formatDateCSV(row.created_at),
   ]);
 
   const escape = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`;
-  const csvContent = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
+  const csvContent = [headers, ...rows]
+    .map((r) => r.map(escape).join(","))
+    .join("\n");
 
   const BOM = "\uFEFF"; // UTF-8 BOM so Excel opens correctly
-  const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([BOM + csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -74,6 +116,7 @@ function exportToCSV(data: FormSubmission[], filename: string) {
 export default function DashboardPage() {
   const [data, setData] = useState<FormSubmission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [departmentsList, setDepartmentsList] = useState<string[]>([]);
 
   const now = new Date();
   const defaultBulan = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -84,6 +127,21 @@ export default function DashboardPage() {
   const [bulan, setBulan] = useState(defaultBulan);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchDepts() {
+      try {
+        const res = await fetch("/api/departments");
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json)) setDepartmentsList(json);
+        }
+      } catch (err) {
+        console.error("Failed to fetch departments list:", err);
+      }
+    }
+    fetchDepts();
+  }, []);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -93,11 +151,15 @@ export default function DashboardPage() {
     try {
       const params = new URLSearchParams();
       if (search) params.append("search", search);
-      if (jenisForm && jenisForm !== "SEMUA") params.append("jenis_form", jenisForm);
-      if (departemen && departemen !== "SEMUA") params.append("departemen", departemen);
+      if (jenisForm && jenisForm !== "SEMUA")
+        params.append("jenis_form", jenisForm);
+      if (departemen && departemen !== "SEMUA")
+        params.append("departemen", departemen);
       if (bulan) params.append("bulan", bulan);
 
-      const res = await fetch(`/api/submissions?${params.toString()}`, { cache: "no-store" });
+      const res = await fetch(`/api/submissions?${params.toString()}`, {
+        cache: "no-store",
+      });
       const json = await res.json();
       if (Array.isArray(json)) setData(json);
     } catch (error) {
@@ -121,7 +183,9 @@ export default function DashboardPage() {
     if (!selectedId) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/submissions/${selectedId}`, { method: "DELETE" });
+      const res = await fetch(`/api/submissions/${selectedId}`, {
+        method: "DELETE",
+      });
       if (res.ok) {
         toast.success("Data berhasil dihapus");
         fetchSubmissions();
@@ -192,14 +256,34 @@ export default function DashboardPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Total Rekap" value={stats.total} icon={FileCheck} color="bg-slate-100 text-slate-600" />
-        <StatCard label="Surat Peringatan" value={stats.sp} icon={AlertTriangle} color="bg-red-100 text-red-600" />
-        <StatCard label="Cuti" value={stats.cuti} icon={Calendar} color="bg-emerald-100 text-emerald-600" />
-        <StatCard label="Ijin" value={stats.ijin} icon={Calendar} color="bg-amber-100 text-amber-600" />
+        <StatCard
+          label="Total Rekap"
+          value={stats.total}
+          icon={FileCheck}
+          color="bg-slate-100 text-slate-600"
+        />
+        <StatCard
+          label="Surat Peringatan"
+          value={stats.sp}
+          icon={AlertTriangle}
+          color="bg-red-100 text-red-600"
+        />
+        <StatCard
+          label="Cuti"
+          value={stats.cuti}
+          icon={Calendar}
+          color="bg-emerald-100 text-emerald-600"
+        />
+        <StatCard
+          label="Ijin"
+          value={stats.ijin}
+          icon={Calendar}
+          color="bg-amber-100 text-amber-600"
+        />
       </div>
 
       {/* Main Table Card */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white rounded-2xl border border-slate-300 overflow-hidden flex flex-col">
         <RekapFilters
           search={search}
           onSearchChange={setSearch}
@@ -210,6 +294,7 @@ export default function DashboardPage() {
           bulan={bulan}
           onBulanChange={setBulan}
           onExport={handleExport}
+          departmentsList={departmentsList}
         />
 
         {/* Desktop Table */}

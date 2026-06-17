@@ -17,9 +17,18 @@ interface DeleteDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   isLoading?: boolean;
+  title?: string;
+  description?: string;
 }
 
-export function DeleteDialog({ isOpen, onClose, onConfirm, isLoading }: DeleteDialogProps) {
+export function DeleteDialog({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  isLoading,
+  title = "Hapus Data Rekap?",
+  description = "Tindakan ini tidak dapat dibatalkan. Data rekap HR ini akan ditandai sebagai dihapus di dalam sistem dan tidak akan muncul lagi di tabel."
+}: DeleteDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent className="sm:max-w-md">
@@ -27,9 +36,9 @@ export function DeleteDialog({ isOpen, onClose, onConfirm, isLoading }: DeleteDi
           <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4 mx-auto sm:mx-0">
             <Trash2 className="w-6 h-6 text-red-600" />
           </div>
-          <AlertDialogTitle className="text-center sm:text-left">Hapus Data Rekap?</AlertDialogTitle>
+          <AlertDialogTitle className="text-center sm:text-left">{title}</AlertDialogTitle>
           <AlertDialogDescription className="text-center sm:text-left">
-            Tindakan ini tidak dapat dibatalkan. Data rekap HR ini akan ditandai sebagai dihapus di dalam sistem dan tidak akan muncul lagi di tabel.
+            {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="mt-4 sm:space-x-3">

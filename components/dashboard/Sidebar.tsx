@@ -41,6 +41,14 @@ export function Sidebar({ isOpen = true, onToggle = () => {} }: SidebarProps) {
     setMounted(true);
   }, []);
 
+  const handleNavItemClick = () => {
+    const isMobile = window.innerWidth < 768;
+
+    if (isMobile && isOpen) {
+      onToggle();
+    }
+  };
+
   return (
     <>
       <aside
@@ -54,7 +62,6 @@ export function Sidebar({ isOpen = true, onToggle = () => {} }: SidebarProps) {
             className={`flex items-center gap-3 overflow-hidden transition-all duration-300 ${isOpen ? "w-auto opacity-100" : "w-0 opacity-0"}`}
           >
             <div className="w-10 h-10 flex items-center justify-center shrink-0">
-              {/* Dummy logo placeholder since we might not have the actual image yet */}
               <Image src="/logo/logo.png" alt="Logo" width={40} height={40} />
             </div>
             <div className="shrink-0">
@@ -83,6 +90,7 @@ export function Sidebar({ isOpen = true, onToggle = () => {} }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={handleNavItemClick} // Ditambahkan di sini agar otomatis menutup
                 className={`flex items-center rounded-lg text-sm font-medium transition-all duration-200 group ${
                   isOpen
                     ? "w-full px-3 py-2.5 gap-3"
@@ -110,9 +118,6 @@ export function Sidebar({ isOpen = true, onToggle = () => {} }: SidebarProps) {
         {/* User section */}
         <div className="p-3 border-t border-white/10 bg-black/10">
           <div className="flex items-center gap-3 px-3 py-2 justify-center">
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-xs font-bold shrink-0 border border-white/20">
-              {session?.user?.name?.[0]?.toUpperCase() || "A"}
-            </div>
             {isOpen && (
               <>
                 <div className="flex-1 min-w-0">
@@ -170,50 +175,52 @@ export function Sidebar({ isOpen = true, onToggle = () => {} }: SidebarProps) {
         </div>
       </aside>
 
-      {/* Logout Modal - Portaled to document.body to escape any fixed/sticky parent bounds */}
-      {mounted && showLogoutModal && createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
-            <div className="w-12 h-12 rounded-full bg-[#EF3655]/10 flex items-center justify-center mb-4 mx-auto">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-6 h-6 text-[#EF3655]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
+      {/* Logout Modal */}
+      {mounted &&
+        showLogoutModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200">
+              <div className="w-12 h-12 rounded-full bg-[#EF3655]/10 flex items-center justify-center mb-4 mx-auto">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-6 h-6 text-[#EF3655]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 text-center mb-2">
+                Konfirmasi Keluar
+              </h3>
+              <p className="text-sm text-slate-500 text-center mb-6">
+                Apakah Anda yakin ingin keluar dari sistem?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="flex-1 bg-slate-200 hover:bg-slate-300 cursor-pointer text-slate-700 font-medium py-2.5 rounded-full text-sm transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="flex-1 bg-[#EF3655] hover:bg-[#D92B45] text-white cursor-pointer font-medium py-2.5 rounded-full text-sm transition-colors"
+                >
+                  Ya, Keluar
+                </button>
+              </div>
             </div>
-            <h3 className="text-lg font-bold text-slate-800 text-center mb-2">
-              Konfirmasi Keluar
-            </h3>
-            <p className="text-sm text-slate-500 text-center mb-6">
-              Apakah Anda yakin ingin keluar dari sistem?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowLogoutModal(false)}
-                className="flex-1 bg-slate-200 hover:bg-slate-300 cursor-pointer text-slate-700 font-medium py-2.5 rounded-full text-sm transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="flex-1 bg-[#EF3655] hover:bg-[#D92B45] text-white cursor-pointer font-medium py-2.5 rounded-full text-sm transition-colors"
-              >
-                Ya, Keluar
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

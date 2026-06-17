@@ -1,9 +1,28 @@
 "use client";
 
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { useState, useEffect } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Building2, Briefcase, AlignLeft, ShieldCheck, Check, X, User, Hash, FileText } from "lucide-react";
+import {
+  CalendarDays,
+  Building2,
+  Briefcase,
+  AlignLeft,
+  ShieldCheck,
+  Check,
+  X,
+  User,
+  Hash,
+  FileText,
+  FileImage,
+} from "lucide-react";
 import { FormSubmission } from "@prisma/client";
 
 interface DetailPanelProps {
@@ -24,28 +43,62 @@ const formatDate = (date: Date | string | null) => {
 
 const getBadgeStyle = (jenis: string) => {
   switch (jenis) {
-    case "SP": return { bg: "bg-purple-100 text-purple-800 border-purple-200", dot: "bg-purple-500" };
-    case "CUTI": return { bg: "bg-emerald-100 text-emerald-800 border-emerald-200", dot: "bg-emerald-500" };
-    case "IJIN": return { bg: "bg-amber-100 text-amber-800 border-amber-200", dot: "bg-amber-500" };
-    default: return { bg: "bg-slate-100 text-slate-800 border-slate-200", dot: "bg-slate-400" };
+    case "SP":
+      return {
+        bg: "bg-purple-100 text-purple-800 border-purple-200",
+        dot: "bg-purple-500",
+      };
+    case "CUTI":
+      return {
+        bg: "bg-emerald-100 text-emerald-800 border-emerald-200",
+        dot: "bg-emerald-500",
+      };
+    case "IJIN":
+      return {
+        bg: "bg-amber-100 text-amber-800 border-amber-200",
+        dot: "bg-amber-500",
+      };
+    default:
+      return {
+        bg: "bg-slate-100 text-slate-800 border-slate-200",
+        dot: "bg-slate-400",
+      };
   }
 };
 
-function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex items-start gap-3 py-3 border-b border-slate-100 last:border-0">
       <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
         <Icon className="w-4 h-4 text-slate-500" />
       </div>
       <div className="flex flex-col gap-0.5 min-w-0">
-        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
-        <span className="text-sm font-medium text-slate-900 break-words">{value || "-"}</span>
+        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          {label}
+        </span>
+        <span className="text-sm font-medium text-slate-900 break-words">
+          {value || "-"}
+        </span>
       </div>
     </div>
   );
 }
 
 export function DetailPanel({ isOpen, onClose, data }: DetailPanelProps) {
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [data?.id]);
+
   if (!data) return null;
 
   const isSP = data.jenis_form === "SP";
@@ -53,14 +106,22 @@ export function DetailPanel({ isOpen, onClose, data }: DetailPanelProps) {
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0" showCloseButton={false}>
+      <SheetContent
+        className="w-full sm:max-w-lg overflow-y-auto p-0"
+        showCloseButton={false}
+      >
         {/* ── Header ─────────────────────────── */}
         <SheetHeader className="px-6 pt-6 pb-5 border-b border-slate-100 bg-white sticky top-0 z-10">
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-col gap-1 text-left min-w-0">
               <div className="flex items-center gap-2">
-                <SheetTitle className="text-lg font-bold text-slate-900 leading-tight">Detail Form HR</SheetTitle>
-                <Badge variant="outline" className={`shrink-0 text-xs font-bold ${badgeStyle.bg}`}>
+                <SheetTitle className="text-lg font-bold text-slate-900 leading-tight">
+                  Detail Form
+                </SheetTitle>
+                <Badge
+                  variant="outline"
+                  className={`shrink-0 text-xs font-bold ${badgeStyle.bg}`}
+                >
                   {data.jenis_form}
                 </Badge>
               </div>
@@ -81,7 +142,6 @@ export function DetailPanel({ isOpen, onClose, data }: DetailPanelProps) {
         </SheetHeader>
 
         <div className="px-6 py-5 space-y-5">
-
           {/* ── Status TTD ─────────────────────── */}
           <div className="rounded-xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
@@ -89,25 +149,43 @@ export function DetailPanel({ isOpen, onClose, data }: DetailPanelProps) {
                 <ShieldCheck className="w-4 h-4 text-blue-500" />
                 Status Tanda Tangan
               </div>
-              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${data.ttd_lengkap ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+              <span
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${data.ttd_lengkap ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}
+              >
                 {data.ttd_lengkap ? "✓ LENGKAP" : "✗ TIDAK LENGKAP"}
               </span>
             </div>
             <div className="grid grid-cols-3 divide-x divide-slate-100 bg-white">
               {[
                 { signed: data.ttd_personalia, label: "Personalia" },
-                { signed: data.ttd_atasan, label: isSP ? "Manager" : "Spv/Manager" },
-                { signed: data.ttd_pemohon, label: isSP ? "Supervisor" : "Pemohon" },
+                {
+                  signed: data.ttd_atasan,
+                  label: isSP ? "Manager" : "Spv/Manager",
+                },
+                {
+                  signed: data.ttd_pemohon,
+                  label: isSP ? "Supervisor" : "Pemohon",
+                },
               ].map((slot, i) => (
-                <div key={i} className="flex flex-col items-center py-3 px-2 text-center">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center mb-1.5 ${slot.signed ? "bg-emerald-100" : "bg-slate-100"}`}>
-                    {slot.signed
-                      ? <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      : <X className="w-3.5 h-3.5 text-slate-400" />
-                    }
+                <div
+                  key={i}
+                  className="flex flex-col items-center py-3 px-2 text-center"
+                >
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center mb-1.5 ${slot.signed ? "bg-emerald-100" : "bg-slate-100"}`}
+                  >
+                    {slot.signed ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <X className="w-3.5 h-3.5 text-slate-400" />
+                    )}
                   </div>
-                  <span className="text-xs font-medium text-slate-600 truncate w-full">{slot.label}</span>
-                  <span className={`text-[10px] font-bold uppercase mt-0.5 ${slot.signed ? "text-emerald-600" : "text-slate-400"}`}>
+                  <span className="text-xs font-medium text-slate-600 truncate w-full">
+                    {slot.label}
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold uppercase mt-0.5 ${slot.signed ? "text-emerald-600" : "text-slate-400"}`}
+                  >
                     {slot.signed ? "Signed" : "Empty"}
                   </span>
                 </div>
@@ -118,13 +196,31 @@ export function DetailPanel({ isOpen, onClose, data }: DetailPanelProps) {
           {/* ── Informasi Karyawan ─────────────── */}
           <div className="rounded-xl border border-slate-200 overflow-hidden">
             <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Informasi Karyawan</h4>
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Informasi Karyawan
+              </h4>
             </div>
             <div className="bg-white px-4">
-              <InfoRow icon={User} label="Nama Karyawan" value={data.nama_karyawan || "-"} />
-              <InfoRow icon={Hash} label="NIK" value={data.nik_karyawan || "Tidak Ditemukan"} />
-              <InfoRow icon={Building2} label="Departemen" value={data.departemen || "-"} />
-              <InfoRow icon={Briefcase} label="Bagian" value={data.bagian || "-"} />
+              <InfoRow
+                icon={User}
+                label="Nama Karyawan"
+                value={data.nama_karyawan || "-"}
+              />
+              <InfoRow
+                icon={Hash}
+                label="NIK"
+                value={data.nik_karyawan || "Tidak Ditemukan"}
+              />
+              <InfoRow
+                icon={Building2}
+                label="Departemen"
+                value={data.departemen || "-"}
+              />
+              <InfoRow
+                icon={Briefcase}
+                label="Bagian"
+                value={data.bagian || "-"}
+              />
             </div>
           </div>
 
@@ -139,12 +235,24 @@ export function DetailPanel({ isOpen, onClose, data }: DetailPanelProps) {
               {/* Cuti/Ijin: Tgl Mulai & Selesai */}
               {!isSP && (
                 <>
-                  <InfoRow icon={CalendarDays} label="Tanggal Mulai" value={formatDate(data.tanggal_mulai)} />
-                  <InfoRow icon={CalendarDays} label="Tanggal Selesai" value={formatDate(data.tanggal_selesai)} />
+                  <InfoRow
+                    icon={CalendarDays}
+                    label="Tanggal Mulai"
+                    value={formatDate(data.tanggal_mulai)}
+                  />
+                  <InfoRow
+                    icon={CalendarDays}
+                    label="Tanggal Selesai"
+                    value={formatDate(data.tanggal_selesai)}
+                  />
                 </>
               )}
               {/* SP: hanya Tanggal Surat */}
-              <InfoRow icon={FileText} label="Tanggal Surat / Form" value={formatDate(data.tanggal_surat)} />
+              <InfoRow
+                icon={FileText}
+                label="Tanggal Surat / Form"
+                value={formatDate(data.tanggal_surat)}
+              />
 
               {/* Keterangan / Alasan */}
               <div className="py-3">
@@ -157,27 +265,47 @@ export function DetailPanel({ isOpen, onClose, data }: DetailPanelProps) {
                   </span>
                 </div>
                 <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap leading-relaxed ml-11">
-                  {isSP ? (data.alasan || "Tidak ada rincian pelanggaran.") : (data.keterangan || "Tidak ada keterangan.")}
+                  {isSP
+                    ? data.alasan || "Tidak ada rincian pelanggaran."
+                    : data.keterangan || "Tidak ada keterangan."}
                 </p>
               </div>
             </div>
           </div>
 
           {/* ── Dokumen Asli ─────────────────── */}
-          {data.image_url && (
-            <div className="rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dokumen Asli</h4>
-              </div>
-              <div className="bg-white p-3">
+          <div className="rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Dokumen Asli
+              </h4>
+            </div>
+            <div className="bg-white p-3">
+              {!data.image_url || imageError ? (
+                <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center flex flex-col items-center justify-center gap-2.5">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <FileImage className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-slate-600">Dokumen Tidak Tersimpan</p>
+                    <p className="text-xs text-slate-400 max-w-[280px] mx-auto leading-normal">
+                      Untuk efisiensi penyimpanan, berkas gambar asli dihapus dari sistem setelah data formulir berhasil diproses.
+                    </p>
+                  </div>
+                </div>
+              ) : (
                 <div className="rounded-lg overflow-hidden border border-slate-100 bg-slate-50">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={data.image_url} alt="Dokumen Form" className="w-full h-auto object-contain max-h-[500px]" />
+                  <img
+                    src={data.image_url}
+                    alt="Dokumen Form"
+                    className="w-full h-auto object-contain max-h-[500px]"
+                    onError={() => setImageError(true)}
+                  />
                 </div>
-              </div>
+              )}
             </div>
-          )}
-
+          </div>
         </div>
       </SheetContent>
     </Sheet>
