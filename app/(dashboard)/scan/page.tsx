@@ -107,14 +107,8 @@ function QuotaIndicator({ quota }: { quota: any }) {
 export default function ScanPage() {
   const router = useRouter();
   const { mutate: globalMutate } = useSWRConfig();
-  const {
-    step,
-    setStep,
-    images,
-    setImages,
-    batchResults,
-    resetScan,
-  } = useScanStore();
+  const { step, setStep, images, setImages, batchResults, resetScan } =
+    useScanStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [quota, setQuota] = useState<{
@@ -139,8 +133,6 @@ export default function ScanPage() {
     setImages(capturedImages);
     setStep(2);
   };
-
-
 
   const handleCancel = () => {
     setShowCancelDialog(true);
@@ -184,7 +176,8 @@ export default function ScanPage() {
 
       // Invalidate SWR submissions cache so dashboard shows fresh data
       globalMutate(
-        (key: string) => typeof key === "string" && key.startsWith("/api/submissions"),
+        (key: string) =>
+          typeof key === "string" && key.startsWith("/api/submissions"),
         undefined,
         { revalidate: true },
       );
@@ -204,7 +197,7 @@ export default function ScanPage() {
           Scan Form Baru
         </h1>
         <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium">
-          Upload atau foto form rekap HR untuk diekstrak otomatis (Maks 4)
+          Upload atau foto form rekap HR untuk diekstrak otomatis
         </p>
         <QuotaIndicator quota={quota} />
       </div>
