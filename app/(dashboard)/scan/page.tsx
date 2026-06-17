@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSWRConfig } from "swr";
 import { ScanStepper } from "@/components/scan/ScanStepper";
 import { ImageCapture, ImageFile } from "@/components/scan/ImageCapture";
-import {
-  BatchProcessingState,
-  BatchResultItem,
-} from "@/components/scan/ProcessingState";
+import { BatchProcessingState } from "@/components/scan/ProcessingState";
 import { ScanPreview } from "@/components/scan/ScanPreview";
 import { useScanStore } from "@/store/scan-store";
 import { toast } from "sonner";
@@ -108,13 +106,13 @@ function QuotaIndicator({ quota }: { quota: any }) {
 
 export default function ScanPage() {
   const router = useRouter();
+  const { mutate: globalMutate } = useSWRConfig();
   const {
     step,
     setStep,
     images,
     setImages,
     batchResults,
-    setBatchResults,
     resetScan,
   } = useScanStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,10 +140,7 @@ export default function ScanPage() {
     setStep(2);
   };
 
-  const handleProcessingComplete = (results: BatchResultItem[]) => {
-    setBatchResults(results);
-    setStep(3);
-  };
+
 
   const handleCancel = () => {
     setShowCancelDialog(true);
@@ -187,6 +182,12 @@ export default function ScanPage() {
         toast.error("Gagal menyimpan semua dokumen");
       }
 
+      // Invalidate SWR submissions cache so dashboard shows fresh data
+      globalMutate(
+        (key: string) => typeof key === "string" && key.startsWith("/api/submissions"),
+        undefined,
+        { revalidate: true },
+      );
       router.push("/dashboard");
     } catch {
       toast.error("Terjadi kesalahan jaringan");
@@ -224,8 +225,7 @@ export default function ScanPage() {
               {step === 1 && <ImageCapture onCapture={handleCaptureComplete} />}
               {step === 2 && images.length > 0 && (
                 <BatchProcessingState
-                  images={images}
-                  onComplete={handleProcessingComplete}
+                  onComplete={() => setStep(3)}
                   onCancel={handleCancel}
                 />
               )}

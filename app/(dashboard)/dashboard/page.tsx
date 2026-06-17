@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import useSWR from "swr";
 import { FormSubmission } from "@prisma/client";
 import { RekapTable } from "@/components/submissions/RekapTable";
 import { RekapCardList } from "@/components/submissions/RekapCardList";
@@ -113,66 +114,57 @@ function exportToCSV(data: FormSubmission[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export default function DashboardPage() {
-  const [data, setData] = useState<FormSubmission[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [departmentsList, setDepartmentsList] = useState<string[]>([]);
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+export default function DashboardPage() {
   const now = new Date();
   const defaultBulan = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [jenisForm, setJenisForm] = useState("SEMUA");
   const [departemen, setDepartemen] = useState("SEMUA");
   const [bulan, setBulan] = useState(defaultBulan);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchDepts() {
-      try {
-        const res = await fetch("/api/departments");
-        if (res.ok) {
-          const json = await res.json();
-          if (Array.isArray(json)) setDepartmentsList(json);
-        }
-      } catch (err) {
-        console.error("Failed to fetch departments list:", err);
-      }
-    }
-    fetchDepts();
-  }, []);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchSubmissions = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (search) params.append("search", search);
-      if (jenisForm && jenisForm !== "SEMUA")
-        params.append("jenis_form", jenisForm);
-      if (departemen && departemen !== "SEMUA")
-        params.append("departemen", departemen);
-      if (bulan) params.append("bulan", bulan);
-
-      const res = await fetch(`/api/submissions?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const json = await res.json();
-      if (Array.isArray(json)) setData(json);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [search, jenisForm, departemen, bulan]);
-
+  // Only debounce search input — filters update the URL instantly
   useEffect(() => {
-    const t = setTimeout(fetchSubmissions, 300);
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 300);
     return () => clearTimeout(t);
-  }, [fetchSubmissions]);
+  }, [searchInput]);
+
+  // Build URL synchronously from current filter state
+  const swrKey = (() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.append("search", debouncedSearch);
+    if (jenisForm && jenisForm !== "SEMUA")
+      params.append("jenis_form", jenisForm);
+    if (departemen && departemen !== "SEMUA")
+      params.append("departemen", departemen);
+    if (bulan) params.append("bulan", bulan);
+    return `/api/submissions?${params.toString()}`;
+  })();
+
+  const { data: rawData, isLoading, isValidating, mutate } = useSWR(
+    swrKey,
+    fetcher,
+    {
+      keepPreviousData: true,
+      revalidateOnFocus: true,
+      dedupingInterval: 2000,
+    }
+  );
+  const data: FormSubmission[] = Array.isArray(rawData) ? rawData : [];
+
+  const { data: deptsData } = useSWR("/api/departments", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
+  });
+  const departmentsList: string[] = Array.isArray(deptsData) ? deptsData : [];
 
   const handleDelete = (id: string) => {
     setSelectedId(id);
@@ -188,7 +180,7 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         toast.success("Data berhasil dihapus");
-        fetchSubmissions();
+        mutate();
       } else toast.error("Gagal menghapus data");
     } catch {
       toast.error("Terjadi kesalahan");
@@ -210,7 +202,6 @@ export default function DashboardPage() {
       return;
     }
 
-    // Build a descriptive filename based on active filters
     const parts = ["Rekap_HR"];
     if (jenisForm !== "SEMUA") parts.push(jenisForm);
     if (departemen !== "SEMUA") parts.push(departemen.replace(/\s+/g, "_"));
@@ -242,7 +233,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto animate-fade-up">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
@@ -254,7 +244,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           label="Total Rekap"
@@ -282,11 +271,10 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Main Table Card */}
       <div className="bg-white rounded-2xl border border-slate-300 overflow-hidden flex flex-col">
         <RekapFilters
-          search={search}
-          onSearchChange={setSearch}
+          search={searchInput}
+          onSearchChange={setSearchInput}
           jenisForm={jenisForm}
           onJenisFormChange={setJenisForm}
           departemen={departemen}
@@ -297,21 +285,19 @@ export default function DashboardPage() {
           departmentsList={departmentsList}
         />
 
-        {/* Desktop Table */}
         <div className="hidden md:block flex-1">
           <RekapTable
             data={data}
-            isLoading={isLoading}
+            isLoading={isLoading && data.length === 0}
             onDelete={handleDelete}
             onView={handleView}
           />
         </div>
 
-        {/* Mobile Card List */}
         <div className="block md:hidden flex-1 bg-slate-50/50">
           <RekapCardList
             data={data}
-            isLoading={isLoading}
+            isLoading={isLoading && data.length === 0}
             onView={handleView}
             onDelete={handleDelete}
           />

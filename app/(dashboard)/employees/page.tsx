@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import useSWR from "swr";
 import {
   Plus,
   Search,
   UserCircle2,
   ChevronLeft,
   ChevronRight,
-  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,49 +23,45 @@ interface PaginatedResponse {
   totalPages: number;
 }
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export default function EmployeesPage() {
-  const [result, setResult] = useState<PaginatedResponse>({
-    data: [],
-    total: 0,
-    page: 1,
-    totalPages: 1,
-  });
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
+  const [debouncedUrl, setDebouncedUrl] = useState("");
 
-  const fetchEmployees = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(PAGE_SIZE),
-      });
-      if (search) params.set("search", search);
-      const res = await fetch(`/api/employees?${params}`);
-      const data = await res.json();
-      setResult(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search]);
-
-  useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
-
-  // Debounced search
+  // Debounced search input
   useEffect(() => {
     const t = setTimeout(() => {
       setSearch(searchInput);
-      setPage(1);
+      setPage(1); // Reset page on new search
     }, 350);
     return () => clearTimeout(t);
   }, [searchInput]);
+
+  // Construct URL for SWR
+  useEffect(() => {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(PAGE_SIZE),
+    });
+    if (search) params.set("search", search);
+    setDebouncedUrl(`/api/employees?${params.toString()}`);
+  }, [page, search]);
+
+  const { data: rawData, isLoading, mutate } = useSWR(
+    debouncedUrl || null,
+    fetcher,
+    { fallbackData: { data: [], total: 0, page: 1, totalPages: 1 } }
+  );
+
+  const result: PaginatedResponse = rawData;
+
+  const handleSuccess = () => {
+    mutate();
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto animate-fade-up space-y-6">
@@ -100,8 +96,27 @@ export default function EmployeesPage() {
       </div>
 
       {/* Grid / Table */}
-      {loading ? (
-        <div className="w-full h-64 bg-white rounded-xl border border-slate-200 animate-pulse" />
+      {isLoading && result.data.length === 0 ? (
+        <div className="w-full bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="flex flex-col">
+            {/* Table Header Skeleton */}
+            <div className="flex border-b border-slate-100 bg-slate-50/80 p-4 gap-4">
+              <div className="h-4 bg-slate-200 rounded w-1/4 animate-pulse" />
+              <div className="h-4 bg-slate-200 rounded w-1/4 animate-pulse" />
+              <div className="h-4 bg-slate-200 rounded w-1/4 animate-pulse" />
+              <div className="h-4 bg-slate-200 rounded w-1/4 animate-pulse" />
+            </div>
+            {/* Table Body Skeletons */}
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex p-4 gap-4 border-b border-slate-50">
+                <div className="h-10 bg-slate-100 rounded w-1/4 animate-pulse" />
+                <div className="h-10 bg-slate-100 rounded w-1/4 animate-pulse" />
+                <div className="h-10 bg-slate-100 rounded w-1/4 animate-pulse" />
+                <div className="h-10 bg-slate-100 rounded w-1/4 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
       ) : result.data.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl border border-slate-200">
           <UserCircle2 className="w-12 h-12 text-slate-200 mb-4" />
@@ -164,7 +179,7 @@ export default function EmployeesPage() {
                   >
                     {item}
                   </Button>
-                ),
+                 ),
               )}
             <Button
               variant="outline"
@@ -183,7 +198,7 @@ export default function EmployeesPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         employee={null}
-        onSuccess={fetchEmployees}
+        onSuccess={handleSuccess}
       />
     </div>
   );

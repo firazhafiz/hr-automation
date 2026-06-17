@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect } from "react";
 import {
   CheckCircle2,
   Loader2,
@@ -11,195 +11,40 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { ImageFile } from "./ImageCapture";
-
-export type ItemStatus = "pending" | "processing" | "success" | "error";
-
-export interface BatchResultItem {
-  imageFile: ImageFile;
-  status: ItemStatus;
-  data?: any;
-  error?: string;
-}
-
-interface BatchProcessingStateProps {
-  images: ImageFile[];
-  onComplete: (results: BatchResultItem[]) => void;
-  onCancel: () => void;
-}
+import { useScanStore, ItemStatus } from "@/store/scan-store";
 
 export function BatchProcessingState({
-  images,
   onComplete,
   onCancel,
-}: BatchProcessingStateProps) {
-  const [results, setResults] = useState<BatchResultItem[]>(() =>
-    images.map((img) => ({ imageFile: img, status: "pending" as ItemStatus })),
-  );
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isCancelled, setIsCancelled] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-  const requestSent = useRef(false);
-  const cancelledRef = useRef(false);
+}: {
+  onComplete: () => void;
+  onCancel: () => void;
+}) {
+  const {
+    images,
+    batchResults: results,
+    currentIndex,
+    isProcessing,
+    isFinished,
+    isRetrying,
+    isCancelled,
+    startProcessing,
+    retryFailed,
+    cancelProcessing,
+  } = useScanStore();
 
-  const dataURLtoFile = (dataurl: string, filename: string): File => {
-    const arr = dataurl.split(",");
-    const mime = arr[0].match(/:(.*?);/)![1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) u8arr[n] = bstr.charCodeAt(n);
-    return new File([u8arr], filename, { type: mime });
+  useEffect(() => {
+    // Start processing as soon as this component mounts
+    // The store will handle preventing duplicate runs
+    startProcessing();
+  }, [startProcessing]);
+
+  const handleProceed = () => {
+    onComplete();
   };
 
-  const updateResult = useCallback(
-    (index: number, update: Partial<BatchResultItem>) => {
-      setResults((prev) =>
-        prev.map((r, i) => (i === index ? { ...r, ...update } : r)),
-      );
-    },
-    [],
-  );
-
-  /** Process a single document by index */
-  const processOne = useCallback(
-    async (index: number): Promise<BatchResultItem> => {
-      const img = images[index];
-      try {
-        const file = dataURLtoFile(img.src, img.name);
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await fetch("/api/scan", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const err = await res
-            .json()
-            .catch(() => ({ error: `HTTP ${res.status}` }));
-          // Provide user-friendly error messages
-          let errorMsg = err.error || "Gagal memproses gambar";
-
-          if (err.rateLimit?.retryAfterSeconds) {
-            errorMsg = `Sistem sibuk. Harap tunggu ${err.rateLimit.retryAfterSeconds} detik sebelum mencoba ulang.`;
-          } else if (
-            err.rateLimit?.nextResetUTC &&
-            !err.rateLimit.allowed &&
-            err.rateLimit.dailyUsed >= err.rateLimit.dailyLimit
-          ) {
-            errorMsg = "Batas harian tercapai. Coba lagi besok.";
-          } else if (
-            errorMsg.includes("503") ||
-            errorMsg.includes("Service Unavailable") ||
-            errorMsg.includes("high demand")
-          ) {
-            errorMsg = "Server AI sedang sibuk. Coba lagi sebentar.";
-          } else if (
-            errorMsg.includes("429") ||
-            errorMsg.includes("RESOURCE_EXHAUSTED")
-          ) {
-            errorMsg = "Batas permintaan API tercapai. Tunggu sebentar.";
-          } else if (errorMsg.includes("400")) {
-            errorMsg = "File gambar tidak valid atau rusak.";
-          }
-
-          throw new Error(errorMsg);
-        }
-
-        const result = await res.json();
-        return { imageFile: img, status: "success", data: result.data };
-      } catch (err: any) {
-        const errorMsg = err.message || "Terjadi kesalahan tidak diketahui";
-        return { imageFile: img, status: "error", error: errorMsg };
-      }
-    },
-    [images],
-  );
-
-  /** Process all documents sequentially */
-  useEffect(() => {
-    if (requestSent.current) return;
-    requestSent.current = true;
-
-    const processAll = async () => {
-      for (let i = 0; i < images.length; i++) {
-        if (cancelledRef.current) break;
-
-        setCurrentIndex(i);
-        updateResult(i, { status: "processing", error: undefined });
-
-        const result = await processOne(i);
-        updateResult(i, result);
-
-        if (result.status === "error") {
-          toast.error(`Dokumen ${i + 1}: ${result.error}`);
-        }
-
-        // Small delay between requests to reduce chance of 503/429
-        if (i < images.length - 1 && !cancelledRef.current) {
-          await new Promise((r) => setTimeout(r, 500));
-        }
-      }
-
-      if (!cancelledRef.current) {
-        setIsFinished(true);
-      }
-    };
-
-    processAll();
-  }, [images, updateResult, processOne]);
-
-  /** Retry all failed documents */
-  const handleRetryFailed = useCallback(async () => {
-    setIsRetrying(true);
-
-    const failedIndices = results
-      .map((r, i) => (r.status === "error" ? i : -1))
-      .filter((i) => i >= 0);
-
-    for (const idx of failedIndices) {
-      setCurrentIndex(idx);
-      updateResult(idx, { status: "processing", error: undefined });
-
-      const result = await processOne(idx);
-      updateResult(idx, result);
-
-      if (result.status === "error") {
-        toast.error(`Dokumen ${idx + 1}: ${result.error}`);
-      }
-
-      // Delay between retries
-      if (idx !== failedIndices[failedIndices.length - 1]) {
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-    }
-
-    setIsRetrying(false);
-    // Re-check if we should auto-continue
-    setResults((prev) => {
-      const updated = [...prev];
-      return updated;
-    });
-  }, [results, processOne, updateResult]);
-
-  /** Proceed to review with current results */
-  const handleProceed = useCallback(() => {
-    const successCount = results.filter((r) => r.status === "success").length;
-    if (successCount > 0) {
-      toast.success(
-        `${successCount}/${images.length} dokumen berhasil diproses`,
-      );
-    }
-    onComplete(results);
-  }, [results, images.length, onComplete]);
-
   const handleCancel = () => {
-    cancelledRef.current = true;
-    setIsCancelled(true);
+    cancelProcessing();
     onCancel();
   };
 
@@ -208,8 +53,7 @@ export function BatchProcessingState({
   ).length;
   const successCount = results.filter((r) => r.status === "success").length;
   const errorCount = results.filter((r) => r.status === "error").length;
-  const isProcessing = results.some((r) => r.status === "processing");
-  const progress = Math.round((completedCount / images.length) * 100);
+  const progress = Math.round((completedCount / images.length) * 100) || 0;
 
   const statusIcon = (status: ItemStatus) => {
     switch (status) {
@@ -326,11 +170,10 @@ export function BatchProcessingState({
 
       {/* Action Buttons */}
       <div className="flex flex-col gap-2 w-full max-w-sm">
-        {/* Show Retry + Continue when finished with errors */}
         {isFinished && !isProcessing && !isRetrying && errorCount > 0 && (
           <>
             <Button
-              onClick={handleRetryFailed}
+              onClick={() => retryFailed()}
               className="w-full rounded-full bg-amber-500 hover:bg-amber-600 text-white"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
@@ -349,17 +192,14 @@ export function BatchProcessingState({
           </>
         )}
 
-        {/* Auto-proceed when all success */}
         {isFinished &&
           !isProcessing &&
           !isRetrying &&
           errorCount === 0 &&
           successCount > 0 && (
-            // Auto-proceed after small delay
             <AutoProceed onProceed={handleProceed} />
           )}
 
-        {/* Cancel while processing */}
         {(isProcessing || isRetrying) && !isCancelled && (
           <Button
             variant="outline"
@@ -371,10 +211,9 @@ export function BatchProcessingState({
           </Button>
         )}
 
-        {/* Cancel when finished */}
         {isFinished && !isProcessing && !isRetrying && successCount === 0 && (
           <Button
-            onClick={onCancel}
+            onClick={handleCancel}
             className="w-full rounded-full bg-[#1767AF] hover:bg-[#1356A0] text-white"
           >
             Kembali ke Upload
@@ -385,7 +224,6 @@ export function BatchProcessingState({
   );
 }
 
-/** Auto-proceed component with a brief visible delay */
 function AutoProceed({ onProceed }: { onProceed: () => void }) {
   useEffect(() => {
     const timer = setTimeout(onProceed, 800);
