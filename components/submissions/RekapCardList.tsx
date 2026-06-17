@@ -74,7 +74,7 @@ export function RekapCardList({ data, isLoading, onView, onDelete }: RekapCardLi
                 </p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-xs text-slate-500 tabular-nums">{formatDate(row.tanggal_mulai)}</p>
+                <p className="text-xs text-slate-500 tabular-nums">{formatDate(row.tanggal_surat)}</p>
               </div>
             </div>
           </div>

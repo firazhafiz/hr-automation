@@ -166,11 +166,11 @@ export async function GET(request: Request) {
       const [year, month] = bulan.split("-").map(Number);
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0, 23, 59, 59);
-      // Filter by tanggal_mulai if available, otherwise fall back to created_at
+      // Filter by tanggal_surat (tanggal dokumen dibuat), otherwise fall back to created_at
       andClauses.push({
         OR: [
-          { tanggal_mulai: { gte: startDate, lte: endDate } },
-          { AND: [{ tanggal_mulai: null }, { created_at: { gte: startDate, lte: endDate } }] },
+          { tanggal_surat: { gte: startDate, lte: endDate } },
+          { AND: [{ tanggal_surat: null }, { created_at: { gte: startDate, lte: endDate } }] },
         ],
       });
     }

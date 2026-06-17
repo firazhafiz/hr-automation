@@ -6,7 +6,7 @@ import { Camera, Upload, X, Plus, Images } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-const MAX_FILES = 10;
+const MAX_FILES = 4;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export interface ImageFile {

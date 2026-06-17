@@ -250,7 +250,7 @@ export function DetailPanel({ isOpen, onClose, data }: DetailPanelProps) {
               {/* SP: hanya Tanggal Surat */}
               <InfoRow
                 icon={FileText}
-                label="Tanggal Surat / Form"
+                label="Tanggal Surat"
                 value={formatDate(data.tanggal_surat)}
               />
 
@@ -287,9 +287,12 @@ export function DetailPanel({ isOpen, onClose, data }: DetailPanelProps) {
                     <FileImage className="w-5 h-5" />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-semibold text-slate-600">Dokumen Tidak Tersimpan</p>
+                    <p className="text-sm font-semibold text-slate-600">
+                      Dokumen Tidak Tersimpan
+                    </p>
                     <p className="text-xs text-slate-400 max-w-[280px] mx-auto leading-normal">
-                      Untuk efisiensi penyimpanan, berkas gambar asli dihapus dari sistem setelah data formulir berhasil diproses.
+                      Untuk efisiensi penyimpanan, berkas gambar asli dihapus
+                      dari sistem setelah data formulir berhasil diproses.
                     </p>
                   </div>
                 </div>

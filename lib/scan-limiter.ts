@@ -10,15 +10,35 @@ const DAILY_SCAN_LIMIT = parseInt(process.env.DAILY_SCAN_LIMIT || "18", 10);
 const RPM_LIMIT = 5; // requests per minute
 
 /**
- * Get the number of scans done today (in server's timezone)
+ * Helper: Mendapatkan awal hari ini berdasarkan Waktu Pasifik (PT) dalam UTC.
+ * Quota Gemini API direset setiap tengah malam waktu PT.
+ */
+export function getCurrentPtMidnightUTC(): Date {
+  const now = new Date();
+  const ptTimeStr = now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" });
+  const utcTimeStr = now.toLocaleString("en-US", { timeZone: "UTC" });
+  
+  const ptTime = new Date(ptTimeStr);
+  const utcTime = new Date(utcTimeStr);
+  
+  const offsetHours = Math.round((utcTime.getTime() - ptTime.getTime()) / (1000 * 60 * 60));
+  
+  return new Date(Date.UTC(ptTime.getFullYear(), ptTime.getMonth(), ptTime.getDate(), offsetHours, 0, 0));
+}
+
+export function getNextMidnightPT(): Date {
+  return new Date(getCurrentPtMidnightUTC().getTime() + 24 * 60 * 60 * 1000);
+}
+
+/**
+ * Get the number of scans done today (aligned to Gemini API PT reset)
  */
 async function getTodayScanCount(): Promise<number> {
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDayPT = getCurrentPtMidnightUTC();
 
   return prisma.scanLog.count({
     where: {
-      created_at: { gte: startOfDay },
+      created_at: { gte: startOfDayPT },
     },
   });
 }
@@ -42,6 +62,7 @@ export interface RateLimitResult {
   dailyUsed: number;
   dailyLimit: number;
   retryAfterSeconds?: number;
+  nextResetUTC?: string;
 }
 
 /**
@@ -54,6 +75,8 @@ export async function checkScanRateLimit(): Promise<RateLimitResult> {
     getRecentMinuteScanCount(),
   ]);
 
+  const nextResetUTC = getNextMidnightPT().toISOString();
+
   // Check daily limit
   if (dailyCount >= DAILY_SCAN_LIMIT) {
     return {
@@ -61,6 +84,7 @@ export async function checkScanRateLimit(): Promise<RateLimitResult> {
       reason: `Batas scan harian tercapai (${DAILY_SCAN_LIMIT} scan/hari). Coba lagi besok.`,
       dailyUsed: dailyCount,
       dailyLimit: DAILY_SCAN_LIMIT,
+      nextResetUTC,
     };
   }
 
@@ -72,6 +96,7 @@ export async function checkScanRateLimit(): Promise<RateLimitResult> {
       dailyUsed: dailyCount,
       dailyLimit: DAILY_SCAN_LIMIT,
       retryAfterSeconds: 15,
+      nextResetUTC,
     };
   }
 
@@ -79,6 +104,7 @@ export async function checkScanRateLimit(): Promise<RateLimitResult> {
     allowed: true,
     dailyUsed: dailyCount,
     dailyLimit: DAILY_SCAN_LIMIT,
+    nextResetUTC,
   };
 }
 

@@ -35,7 +35,7 @@ export function BatchProcessingState({
   onCancel,
 }: BatchProcessingStateProps) {
   const [results, setResults] = useState<BatchResultItem[]>(() =>
-    images.map((img) => ({ imageFile: img, status: "pending" as ItemStatus }))
+    images.map((img) => ({ imageFile: img, status: "pending" as ItemStatus })),
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isCancelled, setIsCancelled] = useState(false);
@@ -57,10 +57,10 @@ export function BatchProcessingState({
   const updateResult = useCallback(
     (index: number, update: Partial<BatchResultItem>) => {
       setResults((prev) =>
-        prev.map((r, i) => (i === index ? { ...r, ...update } : r))
+        prev.map((r, i) => (i === index ? { ...r, ...update } : r)),
       );
     },
-    []
+    [],
   );
 
   /** Process a single document by index */
@@ -78,16 +78,35 @@ export function BatchProcessingState({
         });
 
         if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+          const err = await res
+            .json()
+            .catch(() => ({ error: `HTTP ${res.status}` }));
           // Provide user-friendly error messages
           let errorMsg = err.error || "Gagal memproses gambar";
-          if (errorMsg.includes("503") || errorMsg.includes("Service Unavailable") || errorMsg.includes("high demand")) {
+
+          if (err.rateLimit?.retryAfterSeconds) {
+            errorMsg = `Sistem sibuk. Harap tunggu ${err.rateLimit.retryAfterSeconds} detik sebelum mencoba ulang.`;
+          } else if (
+            err.rateLimit?.nextResetUTC &&
+            !err.rateLimit.allowed &&
+            err.rateLimit.dailyUsed >= err.rateLimit.dailyLimit
+          ) {
+            errorMsg = "Batas harian tercapai. Coba lagi besok.";
+          } else if (
+            errorMsg.includes("503") ||
+            errorMsg.includes("Service Unavailable") ||
+            errorMsg.includes("high demand")
+          ) {
             errorMsg = "Server AI sedang sibuk. Coba lagi sebentar.";
-          } else if (errorMsg.includes("429") || errorMsg.includes("RESOURCE_EXHAUSTED")) {
+          } else if (
+            errorMsg.includes("429") ||
+            errorMsg.includes("RESOURCE_EXHAUSTED")
+          ) {
             errorMsg = "Batas permintaan API tercapai. Tunggu sebentar.";
           } else if (errorMsg.includes("400")) {
             errorMsg = "File gambar tidak valid atau rusak.";
           }
+
           throw new Error(errorMsg);
         }
 
@@ -98,7 +117,7 @@ export function BatchProcessingState({
         return { imageFile: img, status: "error", error: errorMsg };
       }
     },
-    [images]
+    [images],
   );
 
   /** Process all documents sequentially */
@@ -171,7 +190,9 @@ export function BatchProcessingState({
   const handleProceed = useCallback(() => {
     const successCount = results.filter((r) => r.status === "success").length;
     if (successCount > 0) {
-      toast.success(`${successCount}/${images.length} dokumen berhasil diproses`);
+      toast.success(
+        `${successCount}/${images.length} dokumen berhasil diproses`,
+      );
     }
     onComplete(results);
   }, [results, images.length, onComplete]);
@@ -183,7 +204,7 @@ export function BatchProcessingState({
   };
 
   const completedCount = results.filter(
-    (r) => r.status === "success" || r.status === "error"
+    (r) => r.status === "success" || r.status === "error",
   ).length;
   const successCount = results.filter((r) => r.status === "success").length;
   const errorCount = results.filter((r) => r.status === "error").length;
@@ -221,11 +242,13 @@ export function BatchProcessingState({
       {/* Header */}
       <div className="text-center">
         <h3 className="text-base font-bold text-slate-900">
-          {isFinished && !isRetrying ? "Pemrosesan Selesai" : "Memproses Dokumen..."}
+          {isFinished && !isRetrying
+            ? "Pemrosesan Selesai"
+            : "Memproses Dokumen..."}
         </h3>
         <p className="text-sm text-slate-500 mt-1">
           {isProcessing || isRetrying
-            ? `Memproses dokumen ${currentIndex + 1} dari ${images.length}`
+            ? `${currentIndex + 1} dari ${images.length}`
             : `Selesai — ${successCount} berhasil, ${errorCount} gagal`}
         </p>
       </div>
@@ -255,10 +278,10 @@ export function BatchProcessingState({
               item.status === "processing"
                 ? "bg-blue-50/50 border-[#1767AF]/20"
                 : item.status === "success"
-                ? "bg-emerald-50/50 border-emerald-100"
-                : item.status === "error"
-                ? "bg-red-50/50 border-red-100"
-                : "bg-white border-slate-100"
+                  ? "bg-emerald-50/50 border-emerald-100"
+                  : item.status === "error"
+                    ? "bg-red-50/50 border-red-100"
+                    : "bg-white border-slate-100"
             }`}
           >
             {/* Thumbnail */}
@@ -281,17 +304,17 @@ export function BatchProcessingState({
                   item.status === "success"
                     ? "text-emerald-600"
                     : item.status === "error"
-                    ? "text-red-500 font-medium leading-snug"
-                    : item.status === "processing"
-                    ? "text-[#1767AF]"
-                    : "text-slate-400"
+                      ? "text-red-500 font-medium leading-snug"
+                      : item.status === "processing"
+                        ? "text-[#1767AF]"
+                        : "text-slate-400"
                 }`}
               >
                 {item.status === "success" && item.data
                   ? `${item.data.jenis_form} — ${item.data.nama || "Nama tidak terdeteksi"}`
                   : item.error
-                  ? item.error
-                  : statusLabel(item.status)}
+                    ? item.error
+                    : statusLabel(item.status)}
               </p>
             </div>
 
@@ -327,10 +350,14 @@ export function BatchProcessingState({
         )}
 
         {/* Auto-proceed when all success */}
-        {isFinished && !isProcessing && !isRetrying && errorCount === 0 && successCount > 0 && (
-          // Auto-proceed after small delay
-          <AutoProceed onProceed={handleProceed} />
-        )}
+        {isFinished &&
+          !isProcessing &&
+          !isRetrying &&
+          errorCount === 0 &&
+          successCount > 0 && (
+            // Auto-proceed after small delay
+            <AutoProceed onProceed={handleProceed} />
+          )}
 
         {/* Cancel while processing */}
         {(isProcessing || isRetrying) && !isCancelled && (

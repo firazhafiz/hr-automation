@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ScanStepper } from "@/components/scan/ScanStepper";
 import { ImageCapture, ImageFile } from "@/components/scan/ImageCapture";
@@ -11,7 +11,14 @@ import {
 import { ScanPreview } from "@/components/scan/ScanPreview";
 import { useScanStore } from "@/store/scan-store";
 import { toast } from "sonner";
-import { Lightbulb, Camera, CheckCircle2, Info, FileText } from "lucide-react";
+import {
+  Lightbulb,
+  Camera,
+  CheckCircle2,
+  Info,
+  FileText,
+  Activity,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +48,64 @@ const TIPS = [
   },
 ];
 
+function QuotaIndicator({ quota }: { quota: any }) {
+  const [timeLeft, setTimeLeft] = useState<string>("");
+
+  useEffect(() => {
+    if (!quota || quota.remaining > 0) return;
+
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const resetTime = new Date(quota.nextResetUTC).getTime();
+      const distance = resetTime - now;
+
+      if (distance < 0) {
+        clearInterval(interval);
+        setTimeLeft("00:00:00");
+        return;
+      }
+
+      const hours = Math.floor(
+        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+      );
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      setTimeLeft(
+        `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [quota]);
+
+  if (!quota) return null;
+
+  const isLimitReached = quota.remaining === 0;
+
+  return (
+    <div
+      className={`pt-3 text-sm max-w-sm ${isLimitReached ? " text-red-700" : " text-[#1767AF]"}`}
+    >
+      <div className="flex gap-2 items-center">
+        <Activity className="w-4 h-4 shrink-0" />
+        <span className="font-semibold">
+          Kuota Scan Harian {quota.used} / {quota.limit}
+        </span>
+      </div>
+      {isLimitReached && (
+        <div className="font-medium mt-1">
+          Batas harian tercapai. Quota akan direset (tengah malam Waktu Pasifik)
+          dalam: <br />
+          <span className="font-bold tabular-nums text-red-600 text-base">
+            {timeLeft}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ScanPage() {
   const router = useRouter();
   const {
@@ -54,6 +119,23 @@ export default function ScanPage() {
   } = useScanStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [quota, setQuota] = useState<{
+    used: number;
+    limit: number;
+    remaining: number;
+    nextResetUTC: string;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/scan/quota")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setQuota(data.quota);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const handleCaptureComplete = (capturedImages: ImageFile[]) => {
     setImages(capturedImages);
@@ -121,8 +203,9 @@ export default function ScanPage() {
           Scan Form Baru
         </h1>
         <p className="text-sm sm:text-base text-slate-500 mt-1 font-medium">
-          Upload atau foto form rekap HR untuk diekstrak otomatis (Maks 10)
+          Upload atau foto form rekap HR untuk diekstrak otomatis (Maks 4)
         </p>
+        <QuotaIndicator quota={quota} />
       </div>
 
       <div
@@ -188,7 +271,7 @@ export default function ScanPage() {
               <div className="mx-5 mb-5 p-3 rounded-xl bg-blue-50 border border-blue-100 flex gap-2 text-xs text-blue-700">
                 <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                 Sistem mengenali form SP, Cuti, dan Ijin secara otomatis. Anda
-                dapat memindai hingga 10 dokumen sekaligus.
+                dapat memindai hingga 4 dokumen sekaligus.
               </div>
             </div>
           </div>

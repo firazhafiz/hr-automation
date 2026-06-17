@@ -38,7 +38,10 @@ export async function POST(req: NextRequest) {
     const rateLimit = await checkScanRateLimit();
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: rateLimit.reason || "Batas scan tercapai" },
+        { 
+          error: rateLimit.reason || "Batas scan tercapai",
+          rateLimit
+        },
         { status: 429 }
       );
     }

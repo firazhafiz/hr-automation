@@ -108,7 +108,7 @@ export function RekapTable({
               Departemen
             </TableHead>
             <TableHead className="font-semibold text-slate-600">
-              Tanggal Mulai
+              Tanggal Surat
             </TableHead>
             <TableHead className="text-center font-semibold text-slate-600">
               Validasi TTD
@@ -157,7 +157,7 @@ export function RekapTable({
                 </div>
               </TableCell>
               <TableCell className="text-slate-600 tabular-nums">
-                {formatDate(row.tanggal_mulai)}
+                {formatDate(row.tanggal_surat)}
               </TableCell>
               <TableCell className="text-center">
                 {row.ttd_lengkap ? (
