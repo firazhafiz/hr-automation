@@ -35,31 +35,11 @@ export async function GET(request: Request) {
       prisma.employee.count({ where }),
     ]);
 
-    // Also get SP/Cuti/Ijin counts per employee
-    const employeeIds = employees.map(e => e.id);
-    const summaryCounts = await prisma.formSubmission.groupBy({
-      by: ["employee_id", "jenis_form"],
-      where: {
-        employee_id: { in: employeeIds },
-        is_deleted: false,
-      },
-      _count: { id: true },
-    });
-
-    const summaryMap: Record<string, { sp: number; cuti: number; ijin: number }> = {};
-    for (const row of summaryCounts) {
-      if (!row.employee_id) continue;
-      if (!summaryMap[row.employee_id]) summaryMap[row.employee_id] = { sp: 0, cuti: 0, ijin: 0 };
-      if (row.jenis_form === "SP") summaryMap[row.employee_id].sp = row._count.id;
-      if (row.jenis_form === "CUTI") summaryMap[row.employee_id].cuti = row._count.id;
-      if (row.jenis_form === "IJIN") summaryMap[row.employee_id].ijin = row._count.id;
-    }
-
     const enrichedEmployees = employees.map(emp => {
       const { password, ...safeEmp } = emp;
       return {
         ...safeEmp,
-        summary: summaryMap[emp.id] || { sp: 0, cuti: 0, ijin: 0 },
+        summary: { sp: emp.total_sp, cuti: emp.total_cuti, ijin: emp.total_ijin },
       };
     });
 

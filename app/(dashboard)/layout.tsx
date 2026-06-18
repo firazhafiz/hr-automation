@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import Image from "next/image";
+import { AutoLogout } from "@/components/AutoLogout";
 
 export default function DashboardLayout({
   children,
@@ -29,6 +30,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-slate-50">
+      <AutoLogout />
       {/* Mobile Overlay */}
       {isMobile && isSidebarOpen && (
         <div

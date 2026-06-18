@@ -25,8 +25,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Password lama dan baru harus diisi" }, { status: 400 });
     }
 
-    if (newPassword.length < 6) {
-      return NextResponse.json({ error: "Password baru minimal 6 karakter" }, { status: 400 });
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return NextResponse.json({ error: "Password baru minimal 6 karakter dan harus mengandung kombinasi huruf dan angka" }, { status: 400 });
     }
 
     const employee = await prisma.employee.findUnique({

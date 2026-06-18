@@ -114,6 +114,20 @@ export async function POST(request: Request) {
       },
     });
 
+    // Increment employee counter column
+    if (employeeId) {
+      const counterField =
+        data.jenis_form === "SP" ? "total_sp" :
+        data.jenis_form === "CUTI" ? "total_cuti" :
+        data.jenis_form === "IJIN" ? "total_ijin" : null;
+      if (counterField) {
+        await prisma.employee.update({
+          where: { id: employeeId },
+          data: { [counterField]: { increment: 1 } },
+        });
+      }
+    }
+
     // Clean up Supabase storage: delete image to save space
     // It's safe to do this asynchronously in the background
     if (data.image_url) {
@@ -142,6 +156,7 @@ export async function GET(request: Request) {
     const jenis_form = searchParams.get("jenis_form");
     const departemen = searchParams.get("departemen");
     const bulan = searchParams.get("bulan"); // "YYYY-MM"
+    const tahun = searchParams.get("tahun"); // "YYYY"
 
     const andClauses: any[] = [{ is_deleted: false }];
 
@@ -163,14 +178,27 @@ export async function GET(request: Request) {
     }
 
     if (bulan) {
+      // Filter by specific month (bulan already includes year, e.g. "2026-06")
       const [year, month] = bulan.split("-").map(Number);
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0, 23, 59, 59);
-      // Filter by tanggal_surat (tanggal dokumen dibuat), otherwise fall back to created_at
       andClauses.push({
         OR: [
           { tanggal_surat: { gte: startDate, lte: endDate } },
-          { AND: [{ tanggal_surat: null }, { created_at: { gte: startDate, lte: endDate } }] },
+          { tanggal_mulai: { gte: startDate, lte: endDate } },
+          { AND: [{ tanggal_surat: null }, { tanggal_mulai: null }, { created_at: { gte: startDate, lte: endDate } }] },
+        ],
+      });
+    } else if (tahun) {
+      // Filter by entire year
+      const year = Number(tahun);
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59);
+      andClauses.push({
+        OR: [
+          { tanggal_surat: { gte: startDate, lte: endDate } },
+          { tanggal_mulai: { gte: startDate, lte: endDate } },
+          { AND: [{ tanggal_surat: null }, { tanggal_mulai: null }, { created_at: { gte: startDate, lte: endDate } }] },
         ],
       });
     }

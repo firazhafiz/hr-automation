@@ -13,12 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import useSWR from "swr";
 
 interface Employee {
   id?: string;
   nik: string;
   nama: string;
-  email?: string | null;
   bagian: string | null;
   departemen: string | null;
 }
@@ -41,6 +41,8 @@ const DEPT_OPTIONS = [
   "Engineering",
 ];
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
 export function EmployeeModal({
   isOpen,
   onClose,
@@ -51,26 +53,29 @@ export function EmployeeModal({
   const [form, setForm] = useState({
     nik: "",
     nama: "",
-    email: "",
-    password: "",
     bagian: "",
     departemen: "",
   });
   const [loading, setLoading] = useState(false);
+  const [isCustomDept, setIsCustomDept] = useState(false);
+
+  const { data: deptsData } = useSWR("/api/departments", fetcher);
+  const departmentsList: string[] = Array.isArray(deptsData)
+    ? deptsData
+    : DEPT_OPTIONS;
 
   useEffect(() => {
     if (employee) {
       setForm({
         nik: employee.nik || "",
         nama: employee.nama || "",
-        email: employee.email || "",
-        password: "", // Kosong berarti tidak diubah
         bagian: employee.bagian || "",
         departemen: employee.departemen || "",
       });
     } else {
-      setForm({ nik: "", nama: "", email: "", password: "toshin123", bagian: "", departemen: "" });
+      setForm({ nik: "", nama: "", bagian: "", departemen: "" });
     }
+    setIsCustomDept(false);
   }, [employee, isOpen]);
 
   if (!isOpen) return null;
@@ -186,59 +191,64 @@ export function EmployeeModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label
-                htmlFor="email"
-                className="text-sm font-medium text-slate-700 flex items-center gap-1.5"
-              >
-                Email Portal
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="cth. budi@toshin.co.id"
-                value={form.email}
-                onChange={(e) => handleChange("email", e.target.value)}
-                className="h-10"
-              />
-            </div>
-            
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="password"
-                className="text-sm font-medium text-slate-700 flex items-center gap-1.5"
-              >
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="text"
-                disabled
-                value="toshin123"
-                className="h-10 bg-slate-50 text-slate-500 cursor-not-allowed"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label
                 htmlFor="departemen"
                 className="text-sm font-medium text-slate-700 flex items-center gap-1.5"
               >
                 <Building2 className="w-3.5 h-3.5 text-slate-400" /> Departemen
               </Label>
-              <Input
-                id="departemen"
-                list="dept-list"
-                placeholder="cth. Produksi"
-                value={form.departemen}
-                onChange={(e) => handleChange("departemen", e.target.value)}
-                className="h-10"
-              />
-              <datalist id="dept-list">
-                {DEPT_OPTIONS.map((d) => (
-                  <option key={d} value={d} />
-                ))}
-              </datalist>
+              {!isCustomDept ? (
+                <select
+                  id="departemen"
+                  className="w-full h-10 px-3 py-2 text-sm bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                  value={form.departemen}
+                  onChange={(e) => {
+                    if (e.target.value === "__tambah__") {
+                      setIsCustomDept(true);
+                      handleChange("departemen", "");
+                    } else {
+                      handleChange("departemen", e.target.value);
+                    }
+                  }}
+                >
+                  <option value="" disabled>
+                    Pilih Departemen
+                  </option>
+                  {departmentsList.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                  <option
+                    value="__tambah__"
+                    className="font-semibold text-[#1767AF]"
+                  >
+                    + Tambah Departemen
+                  </option>
+                </select>
+              ) : (
+                <div className="relative">
+                  <Input
+                    id="departemen"
+                    placeholder="Ketik..."
+                    value={form.departemen}
+                    onChange={(e) => handleChange("departemen", e.target.value)}
+                    className="h-10 pr-20"
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-1 top-1.5 h-7 text-xs text-slate-500 hover:text-slate-700"
+                    onClick={() => {
+                      setIsCustomDept(false);
+                      handleChange("departemen", "");
+                    }}
+                  >
+                    Batal
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">

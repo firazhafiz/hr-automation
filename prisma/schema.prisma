@@ -26,6 +26,9 @@ model Employee {
   bagian     String?          @db.VarChar(100)
   departemen String?          @db.VarChar(50)
   is_active  Boolean          @default(true)
+  total_sp   Int              @default(0)
+  total_cuti Int              @default(0)
+  total_ijin Int              @default(0)
   created_at DateTime         @default(now())
   submissions FormSubmission[]
 }

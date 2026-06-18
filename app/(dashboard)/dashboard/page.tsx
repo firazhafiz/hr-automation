@@ -124,6 +124,7 @@ export default function DashboardPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [jenisForm, setJenisForm] = useState("SEMUA");
   const [departemen, setDepartemen] = useState("SEMUA");
+  const [tahun, setTahun] = useState(now.getFullYear());
   const [bulan, setBulan] = useState(defaultBulan);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -146,6 +147,7 @@ export default function DashboardPage() {
     if (departemen && departemen !== "SEMUA")
       params.append("departemen", departemen);
     if (bulan) params.append("bulan", bulan);
+    else if (tahun) params.append("tahun", tahun.toString());
     return `/api/submissions?${params.toString()}`;
   })();
 
@@ -229,7 +231,7 @@ export default function DashboardPage() {
   const [bulanYear, bulanMonth] = bulan
     ? bulan.split("-").map(Number)
     : [now.getFullYear(), now.getMonth() + 1];
-  const bulanLabel = bulan ? `${MONTHS[bulanMonth - 1]} ${bulanYear}` : "Semua";
+  const bulanLabel = bulan ? `${MONTHS[bulanMonth - 1]} ${bulanYear}` : `Semua Bulan ${tahun}`;
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto animate-fade-up">
@@ -281,6 +283,14 @@ export default function DashboardPage() {
           onDepartemenChange={setDepartemen}
           bulan={bulan}
           onBulanChange={setBulan}
+          tahun={tahun}
+          onTahunChange={(newTahun) => {
+            setTahun(newTahun);
+            if (bulan) {
+              const [_, m] = bulan.split("-");
+              setBulan(`${newTahun}-${m}`);
+            }
+          }}
           onExport={handleExport}
           departmentsList={departmentsList}
         />

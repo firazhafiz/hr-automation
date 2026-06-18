@@ -18,6 +18,20 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       data: { is_deleted: true },
     });
 
+    // Decrement employee counter column
+    if (submission.employee_id) {
+      const counterField =
+        submission.jenis_form === "SP" ? "total_sp" :
+        submission.jenis_form === "CUTI" ? "total_cuti" :
+        submission.jenis_form === "IJIN" ? "total_ijin" : null;
+      if (counterField) {
+        await prisma.employee.update({
+          where: { id: submission.employee_id },
+          data: { [counterField]: { decrement: 1 } },
+        });
+      }
+    }
+
     // Log deletion
     await prisma.auditLog.create({
       data: {

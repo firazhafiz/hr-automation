@@ -8,11 +8,13 @@ import {
   UserCircle2,
   ChevronLeft,
   ChevronRight,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmployeeTable } from "@/components/employees/EmployeeTable";
 import { EmployeeModal } from "@/components/employees/EmployeeModal";
+import { EmployeeImportModal } from "@/components/employees/EmployeeImportModal";
 
 const PAGE_SIZE = 12;
 
@@ -29,6 +31,7 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedUrl, setDebouncedUrl] = useState("");
 
@@ -75,13 +78,23 @@ export default function EmployeesPage() {
             {result.total} karyawan terdaftar
           </p>
         </div>
-        <Button
-          className="bg-[#1767AF] hover:bg-[#1356A0] rounded-full! text-white h-11 px-4 self-start sm:self-auto"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Tambah Karyawan
-        </Button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Button
+            variant="outline"
+            className="rounded-full! h-11 px-4 text-slate-700"
+            onClick={() => setIsImportModalOpen(true)}
+          >
+            <Upload className="mr-2 h-4 w-4 text-[#1767AF]" />
+            Import Excel
+          </Button>
+          <Button
+            className="bg-[#1767AF] hover:bg-[#1356A0] rounded-full! text-white h-11 px-4"
+            onClick={() => setIsModalOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Tambah Karyawan
+          </Button>
+        </div>
       </div>
 
       {/* Search bar */}
@@ -198,6 +211,11 @@ export default function EmployeesPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         employee={null}
+        onSuccess={handleSuccess}
+      />
+      <EmployeeImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
         onSuccess={handleSuccess}
       />
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -17,6 +17,7 @@ import {
   FileText,
   Edit2,
   Loader2,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +73,66 @@ const MONTHS = [
   "Desember",
 ];
 
+// ── CSV Export helper ──────────────────────────────────────────────────────────
+function exportToCSV(data: FormSubmission[], filename: string) {
+  const formatDateCSV = (d: Date | string | null) => {
+    if (!d) return "";
+    return new Date(d).toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const headers = [
+    "No",
+    "Nama Karyawan",
+    "NIK",
+    "Jenis Form",
+    "Departemen",
+    "Bagian",
+    "Tanggal Mulai",
+    "Tanggal Selesai",
+    "Tanggal Surat",
+    "Status TTD",
+    "Keterangan/Alasan",
+    "Tgl Input",
+  ];
+
+  const rows = data.map((row, i) => [
+    i + 1,
+    row.nama_karyawan || "",
+    row.nik_karyawan || "",
+    row.jenis_form || "",
+    row.departemen || "",
+    row.bagian || "",
+    formatDateCSV(row.tanggal_mulai),
+    formatDateCSV(row.tanggal_selesai),
+    formatDateCSV(row.tanggal_surat),
+    row.ttd_lengkap ? "Lengkap" : "Tidak Lengkap",
+    row.jenis_form === "SP" ? row.alasan || "" : row.keterangan || "",
+    formatDateCSV(row.created_at),
+  ]);
+
+  const escape = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`;
+  const csvContent = [headers, ...rows]
+    .map((r) => r.map(escape).join(","))
+    .join("\n");
+
+  const BOM = "\uFEFF";
+  const blob = new Blob([BOM + csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export default function EmployeeDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -88,6 +149,7 @@ export default function EmployeeDetailPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [bulan, setBulan] = useState<string>("");
+  const [tahun, setTahun] = useState<number>(new Date().getFullYear());
   const [jenisForm, setJenisForm] = useState<string>("SEMUA");
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -96,9 +158,13 @@ export default function EmployeeDetailPage() {
   const [isDeleteEmployeeOpen, setIsDeleteEmployeeOpen] = useState(false);
   const [isDeletingEmployee, setIsDeletingEmployee] = useState(false);
 
+  const hasLoadedRef = useRef(false);
+
   const fetchData = useCallback(
-    async (isFirstLoad = false) => {
+    async () => {
       if (!id) return;
+      
+      const isFirstLoad = !hasLoadedRef.current;
       if (isFirstLoad) {
         setInitialLoading(true);
       } else {
@@ -108,6 +174,7 @@ export default function EmployeeDetailPage() {
       try {
         const params = new URLSearchParams();
         if (bulan) params.append("bulan", bulan);
+        else if (tahun) params.append("tahun", tahun.toString());
         if (jenisForm) params.append("jenisForm", jenisForm);
 
         const res = await fetch(`/api/employees/${id}?${params.toString()}`);
@@ -128,24 +195,21 @@ export default function EmployeeDetailPage() {
         console.error(err);
         toast.error("Gagal memuat data");
       } finally {
-        setInitialLoading(false);
-        setListLoading(false);
+        if (isFirstLoad) {
+          setInitialLoading(false);
+          hasLoadedRef.current = true;
+        } else {
+          setListLoading(false);
+        }
       }
     },
-    [id, bulan, jenisForm, router],
+    [id, bulan, jenisForm, tahun, router],
   );
 
-  // First load
+  // Load whenever dependencies change
   useEffect(() => {
-    fetchData(true);
+    fetchData();
   }, [fetchData]);
-
-  // Subsequent filter loads
-  useEffect(() => {
-    if (!initialLoading) {
-      fetchData(false);
-    }
-  }, [bulan, jenisForm]);
 
   const handleDelete = async () => {
     if (!deleteId) return;
@@ -156,7 +220,7 @@ export default function EmployeeDetailPage() {
       });
       if (res.ok) {
         toast.success("Rekap berhasil dihapus");
-        fetchData(false);
+        fetchData();
       } else toast.error("Gagal menghapus rekap");
     } finally {
       setIsDeleting(false);
@@ -183,6 +247,26 @@ export default function EmployeeDetailPage() {
       setIsDeletingEmployee(false);
       setIsDeleteEmployeeOpen(false);
     }
+  };
+
+  const handleExport = () => {
+    if (submissions.length === 0) {
+      toast.warning("Tidak ada data rekap untuk diekspor.");
+      return;
+    }
+
+    const parts = [employee?.nama?.replace(/\s+/g, "_") || "Karyawan"];
+    if (jenisForm !== "SEMUA") parts.push(jenisForm);
+    if (bulan) {
+      const [y, m] = bulan.split("-");
+      parts.push(`${MONTHS[Number(m) - 1]}_${y}`);
+    } else {
+      parts.push(`Tahun_${tahun}`);
+    }
+    const filename = `${parts.join("_")}.csv`;
+
+    exportToCSV(submissions, filename);
+    toast.success(`Berhasil mengekspor ${submissions.length} data ke ${filename}`);
   };
 
   const initials =
@@ -317,6 +401,41 @@ export default function EmployeeDetailPage() {
 
           {/* Filters */}
           <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Tahun filter */}
+            <select
+              className="h-9 px-3 text-sm border border-slate-200 rounded-md text-slate-700 focus:outline-none bg-white cursor-pointer"
+              value={tahun}
+              onChange={(e) => {
+                const newTahun = Number(e.target.value);
+                setTahun(newTahun);
+                if (bulan) {
+                  const [_, m] = bulan.split("-");
+                  setBulan(`${newTahun}-${m}`);
+                }
+              }}
+            >
+              {Array.from({ length: currentYear - 2026 + 2 }, (_, i) => 2026 + i).map(y => (
+                <option key={y} value={y}>Tahun {y}</option>
+              ))}
+            </select>
+
+            {/* Month filter */}
+            <select
+              className="h-9 px-3 text-sm border border-slate-200 rounded-md text-slate-700 focus:outline-none bg-white cursor-pointer"
+              value={bulan}
+              onChange={(e) => setBulan(e.target.value)}
+            >
+              <option value="">Semua Bulan</option>
+              {MONTHS.map((m, mi) => {
+                const val = `${tahun}-${String(mi + 1).padStart(2, "0")}`;
+                return (
+                  <option key={val} value={val}>
+                    {m}
+                  </option>
+                );
+              })}
+            </select>
+
             {/* Jenis Form selector */}
             <select
               className="h-9 px-3 text-sm border border-slate-200 rounded-md text-slate-700 focus:outline-none bg-white cursor-pointer"
@@ -329,22 +448,15 @@ export default function EmployeeDetailPage() {
               <option value="IJIN">Izin</option>
             </select>
 
-            {/* Month filter */}
-            <select
-              className="h-9 px-3 text-sm border border-slate-200 rounded-md text-slate-700 focus:outline-none bg-white cursor-pointer"
-              value={bulan}
-              onChange={(e) => setBulan(e.target.value)}
+            {/* Export Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              className="h-9 px-3 shrink-0 text-slate-600 bg-white"
             >
-              <option value="">Semua ({currentYear})</option>
-              {MONTHS.map((m, mi) => {
-                const val = `${currentYear}-${String(mi + 1).padStart(2, "0")}`;
-                return (
-                  <option key={val} value={val}>
-                    {m} {currentYear}
-                  </option>
-                );
-              })}
-            </select>
+              <Download className="w-4 h-4 mr-1.5" /> Export
+            </Button>
           </div>
         </div>
 

@@ -28,6 +28,8 @@ interface RekapFiltersProps {
   onDepartemenChange: (value: string) => void;
   bulan: string;
   onBulanChange: (value: string) => void;
+  tahun: number;
+  onTahunChange: (value: number) => void;
   onExport: () => void;
   departmentsList?: string[];
 }
@@ -41,11 +43,17 @@ export function RekapFilters({
   onDepartemenChange,
   bulan,
   onBulanChange,
+  tahun,
+  onTahunChange,
   onExport,
   departmentsList = [],
 }: RekapFiltersProps) {
-  const now = new Date();
-  const currentYear = now.getFullYear();
+  // Generate year options from 2026 to current year + 1
+  const currentYear = new Date().getFullYear();
+  const yearOptions: number[] = [];
+  for (let y = 2026; y <= currentYear + 1; y++) {
+    yearOptions.push(y);
+  }
 
   return (
     <div className="p-4 sm:p-5 border-b border-slate-100 space-y-4">
@@ -72,25 +80,38 @@ export function RekapFilters({
 
       {/* Row 2: Filter chips */}
       <div className="flex flex-wrap gap-3">
-        {/* Bulan filter */}
+        {/* Tahun filter */}
         <div className="relative flex items-center">
           <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <select
-            className="h-10 pl-9 text-sm border border-slate-300 rounded-sm bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-300 appearance-none cursor-pointer transition-colors"
-            value={bulan}
-            onChange={(e) => onBulanChange(e.target.value)}
+            className="h-10 pl-9 pr-8 text-sm border border-slate-300 rounded-sm bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-300 appearance-none cursor-pointer transition-colors"
+            value={tahun}
+            onChange={(e) => onTahunChange(Number(e.target.value))}
           >
-            <option value="">Semua ({currentYear})</option>
-            {MONTHS.map((m, mi) => {
-              const val = `${currentYear}-${String(mi + 1).padStart(2, "0")}`;
-              return (
-                <option key={val} value={val}>
-                  {m} {currentYear}
-                </option>
-              );
-            })}
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>
+                Tahun {y}
+              </option>
+            ))}
           </select>
         </div>
+
+        {/* Bulan filter */}
+        <select
+          className="h-10 px-4 pr-8 text-sm border border-slate-300 rounded-sm bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-300 focus:border-slate-300 appearance-none cursor-pointer transition-colors"
+          value={bulan}
+          onChange={(e) => onBulanChange(e.target.value)}
+        >
+          <option value="">Semua Bulan</option>
+          {MONTHS.map((m, mi) => {
+            const val = `${tahun}-${String(mi + 1).padStart(2, "0")}`;
+            return (
+              <option key={val} value={val}>
+                {m}
+              </option>
+            );
+          })}
+        </select>
 
         {/* Jenis Form */}
         <div className="relative flex items-center">

@@ -6,7 +6,8 @@ import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { LayoutDashboard, ScanLine, Users, Menu } from "lucide-react";
+import { LayoutDashboard, ScanLine, Users, Menu, KeyRound } from "lucide-react";
+import { ChangePasswordModal } from "@/components/admin/ChangePasswordModal";
 
 const NAV_ITEMS = [
   {
@@ -35,6 +36,7 @@ export function Sidebar({ isOpen = true, onToggle = () => {} }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -125,31 +127,47 @@ export function Sidebar({ isOpen = true, onToggle = () => {} }: SidebarProps) {
                     {session?.user?.name || "Admin"}
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowLogoutModal(true)}
-                  className="p-1.5 text-white/40 hover:text-[#EF3655] transition-colors rounded-lg hover:bg-[#EF3655]/10 shrink-0"
-                  title="Logout"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => setShowPasswordModal(true)}
+                    className="p-1.5 text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/10"
+                    title="Ganti Password"
                   >
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
-                </button>
+                    <KeyRound className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setShowLogoutModal(true)}
+                    className="p-1.5 text-white/40 hover:text-[#EF3655] transition-colors rounded-lg hover:bg-[#EF3655]/10"
+                    title="Logout"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                  </button>
+                </div>
               </>
             )}
           </div>
           {!isOpen && (
-            <div className="mt-2 flex justify-center">
+            <div className="mt-2 flex flex-col items-center gap-2">
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                className="p-2 text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/10 shrink-0"
+                title="Ganti Password"
+              >
+                <KeyRound className="w-5 h-5" />
+              </button>
               <button
                 onClick={() => setShowLogoutModal(true)}
                 className="p-2 text-white/40 hover:text-[#EF3655] transition-colors rounded-lg hover:bg-[#EF3655]/10 shrink-0"
@@ -219,6 +237,16 @@ export function Sidebar({ isOpen = true, onToggle = () => {} }: SidebarProps) {
               </div>
             </div>
           </div>,
+          document.body,
+        )}
+        
+      {mounted &&
+        showPasswordModal &&
+        createPortal(
+          <ChangePasswordModal 
+            isOpen={showPasswordModal}
+            onClose={() => setShowPasswordModal(false)}
+          />,
           document.body,
         )}
     </>

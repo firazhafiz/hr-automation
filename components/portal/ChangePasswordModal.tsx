@@ -25,6 +25,12 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
       return;
     }
     
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
+    if (!passwordRegex.test(form.newPassword)) {
+      toast.error("Password baru minimal 6 karakter dan harus mengandung kombinasi huruf dan angka");
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch("/api/portal/change-password", {

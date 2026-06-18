@@ -19,6 +19,7 @@ export async function GET(
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const bulan = searchParams.get("bulan"); // format: "YYYY-MM"
+    const tahun = searchParams.get("tahun"); // format: "YYYY"
     const jenisForm = searchParams.get("jenisForm"); // format: "CUTI", "IJIN", "SP", or "SEMUA"
 
     const employee = await prisma.employee.findUnique({
@@ -29,7 +30,6 @@ export async function GET(
       return NextResponse.json({ error: "Karyawan tidak ditemukan" }, { status: 404 });
     }
 
-    // Build date filter — SP forms may have null tanggal_mulai, fall back to created_at
     let submissionWhere: Prisma.FormSubmissionWhereInput = { 
       employee_id: id, 
       is_deleted: false 
@@ -38,6 +38,7 @@ export async function GET(
     if (jenisForm && jenisForm !== "SEMUA") {
       submissionWhere.jenis_form = jenisForm as any;
     }
+
     if (bulan) {
       const [year, month] = bulan.split("-").map(Number);
       const startDate = new Date(year, month - 1, 1);
@@ -47,8 +48,25 @@ export async function GET(
         AND: [
           {
             OR: [
+              { tanggal_surat: { gte: startDate, lte: endDate } },
               { tanggal_mulai: { gte: startDate, lte: endDate } },
-              { AND: [{ tanggal_mulai: null }, { created_at: { gte: startDate, lte: endDate } }] },
+              { AND: [{ tanggal_surat: null }, { tanggal_mulai: null }, { created_at: { gte: startDate, lte: endDate } }] },
+            ],
+          },
+        ],
+      };
+    } else if (tahun) {
+      const year = Number(tahun);
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59);
+      submissionWhere = {
+        ...submissionWhere,
+        AND: [
+          {
+            OR: [
+              { tanggal_surat: { gte: startDate, lte: endDate } },
+              { tanggal_mulai: { gte: startDate, lte: endDate } },
+              { AND: [{ tanggal_surat: null }, { tanggal_mulai: null }, { created_at: { gte: startDate, lte: endDate } }] },
             ],
           },
         ],
@@ -60,21 +78,13 @@ export async function GET(
       orderBy: { created_at: "desc" },
     });
 
-    // Summary counts (all time, not filtered)
-    const allSubmissions = await prisma.formSubmission.groupBy({
-      by: ["jenis_form"],
-      where: { employee_id: id, is_deleted: false },
-      _count: { id: true },
-    });
-
-    const summary = { sp: 0, cuti: 0, ijin: 0, total: 0 };
-    for (const row of allSubmissions) {
-      const count = row._count.id;
-      summary.total += count;
-      if (row.jenis_form === "SP") summary.sp = count;
-      if (row.jenis_form === "CUTI") summary.cuti = count;
-      if (row.jenis_form === "IJIN") summary.ijin = count;
-    }
+    // Summary counts from denormalized counter columns (all time)
+    const summary = {
+      sp: employee.total_sp,
+      cuti: employee.total_cuti,
+      ijin: employee.total_ijin,
+      total: employee.total_sp + employee.total_cuti + employee.total_ijin,
+    };
 
     return NextResponse.json({ employee, submissions, summary });
   } catch (error) {
